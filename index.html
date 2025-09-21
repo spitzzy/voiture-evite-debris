@@ -37,6 +37,10 @@
             <span class="pu-ico">✖️2</span>
             <div class="bar"><div id="barDouble"></div></div>
           </div>
+          <div class="pu pu-blaster" title="Blaster">
+            <span class="pu-ico">🔫</span>
+            <span id="blasterAmmo">0</span>
+          </div>
           <span id="comboMult" class="hud-badge" title="Multiplicateur combo">x1.0</span>
         </div>
         <!-- Settings menu trigger and container -->
@@ -51,6 +55,8 @@
               <button type="button" id="scanBtn" class="icon-btn" aria-pressed="true" title="Scanlines On/Off">📺</button>
               <button type="button" id="vignetteBtn" class="icon-btn" aria-pressed="true" title="Vignette On/Off">🕳️</button>
               <button type="button" id="bloomBtn" class="icon-btn" aria-pressed="true" title="Bloom On/Off">✨</button>
+              <button type="button" id="chromaBtn" class="icon-btn" aria-pressed="false" title="Aberration chromatique On/Off">🌈 RGB</button>
+              <button type="button" id="grainBtn" class="icon-btn" aria-pressed="false" title="Grain film On/Off">🎞️ Grain</button>
               <button type="button" id="ultraBtn" class="icon-btn" aria-pressed="false" title="Ultra Neon (saturation + glow)">🌈 Ultra Neon</button>
               <button type="button" id="retroBtn" class="icon-btn" aria-pressed="false" title="Mode 8‑bit On/Off">🕹️</button>
               <button type="button" id="crtBtn" class="icon-btn" aria-pressed="false" title="CRT Mask On/Off">🖥️</button>
@@ -112,31 +118,25 @@
             <li><b>Tactile</b>: toucher gauche/droite ou glisser</li>
           </ul>
           <div class="skins">
-            <h2>Choisis ta voiture</h2>
+            <h2>Choisis ton vaisseau</h2>
             <div id="skinGrid" class="skin-grid">
-              <button type="button" class="skin-option" data-skin="mint" aria-label="Voiture menthe" aria-pressed="false">
-                <img src="assets/car_mint.svg" alt="Voiture menthe" loading="eager" />
+              <button type="button" class="skin-option" data-skin="scout" aria-label="Vaisseau Scout" aria-pressed="false">
+                <img src="assets/ship_scout.svg" alt="Vaisseau Scout" loading="eager" />
               </button>
-              <button type="button" class="skin-option" data-skin="red" aria-label="Voiture rouge" aria-pressed="false">
-                <img src="assets/car_red.svg" alt="Voiture rouge" loading="eager" />
+              <button type="button" class="skin-option" data-skin="interceptor" aria-label="Intercepteur" aria-pressed="false">
+                <img src="assets/ship_interceptor.svg" alt="Intercepteur" loading="eager" />
               </button>
-              <button type="button" class="skin-option" data-skin="blue" aria-label="Voiture bleue" aria-pressed="false">
-                <img src="assets/car_blue.svg" alt="Voiture bleue" loading="eager" />
+              <button type="button" class="skin-option" data-skin="explorer" aria-label="Explorateur" aria-pressed="false">
+                <img src="assets/ship_explorer.svg" alt="Explorateur" loading="eager" />
               </button>
-              <button type="button" class="skin-option" data-skin="yellow" aria-label="Voiture jaune" aria-pressed="false">
-                <img src="assets/car_yellow.svg" alt="Voiture jaune" loading="eager" />
+              <button type="button" class="skin-option" data-skin="courier" aria-label="Coursier" aria-pressed="false">
+                <img src="assets/ship_courier.svg" alt="Coursier" loading="eager" />
               </button>
-              <button type="button" class="skin-option" data-skin="urban_taxi" aria-label="Urban Taxi noir/jaune" aria-pressed="false">
-                <img src="assets/car_urban_taxi.svg" alt="Urban Taxi noir/jaune" loading="eager" />
+              <button type="button" class="skin-option" data-skin="phantom" aria-label="Fantôme" aria-pressed="false">
+                <img src="assets/ship_phantom.svg" alt="Fantôme" loading="eager" />
               </button>
-              <button type="button" class="skin-option" data-skin="vaporwave" aria-label="Vaporwave rose/magenta" aria-pressed="false">
-                <img src="assets/car_vaporwave.svg" alt="Vaporwave rose/magenta" loading="eager" />
-              </button>
-              <button type="button" class="skin-option" data-skin="hyper" aria-label="Hypercar cyan" aria-pressed="false">
-                <img src="assets/car_hyper.svg" alt="Hypercar cyan" loading="eager" />
-              </button>
-              <button type="button" class="skin-option" data-skin="micro" aria-label="Microcar orange" aria-pressed="false">
-                <img src="assets/car_micro.svg" alt="Microcar orange" loading="eager" />
+              <button type="button" class="skin-option" data-skin="freighter" aria-label="Cargo" aria-pressed="false">
+                <img src="assets/ship_freighter.svg" alt="Cargo" loading="eager" />
               </button>
             </div>
           </div>
@@ -170,16 +170,14 @@
             </div>
           </div>
           <div class="skins">
-            <h2>Changer de voiture</h2>
+            <h2>Changer de vaisseau</h2>
             <div class="skin-grid">
-              <button type="button" class="skin-option" data-skin="mint" aria-pressed="false"><img src="assets/car_mint.svg" alt="Voiture menthe" /></button>
-              <button type="button" class="skin-option" data-skin="red" aria-pressed="false"><img src="assets/car_red.svg" alt="Voiture rouge" /></button>
-              <button type="button" class="skin-option" data-skin="blue" aria-pressed="false"><img src="assets/car_blue.svg" alt="Voiture bleue" /></button>
-              <button type="button" class="skin-option" data-skin="yellow" aria-pressed="false"><img src="assets/car_yellow.svg" alt="Voiture jaune" /></button>
-              <button type="button" class="skin-option" data-skin="urban_taxi" aria-pressed="false"><img src="assets/car_urban_taxi.svg" alt="Urban Taxi noir/jaune" /></button>
-              <button type="button" class="skin-option" data-skin="vaporwave" aria-pressed="false"><img src="assets/car_vaporwave.svg" alt="Vaporwave rose/magenta" /></button>
-              <button type="button" class="skin-option" data-skin="hyper" aria-pressed="false"><img src="assets/car_hyper.svg" alt="Hypercar cyan" /></button>
-              <button type="button" class="skin-option" data-skin="micro" aria-pressed="false"><img src="assets/car_micro.svg" alt="Microcar orange" /></button>
+              <button type="button" class="skin-option" data-skin="scout" aria-pressed="false"><img src="assets/ship_scout.svg" alt="Vaisseau Scout" /></button>
+              <button type="button" class="skin-option" data-skin="interceptor" aria-pressed="false"><img src="assets/ship_interceptor.svg" alt="Intercepteur" /></button>
+              <button type="button" class="skin-option" data-skin="explorer" aria-pressed="false"><img src="assets/ship_explorer.svg" alt="Explorateur" /></button>
+              <button type="button" class="skin-option" data-skin="courier" aria-pressed="false"><img src="assets/ship_courier.svg" alt="Coursier" /></button>
+              <button type="button" class="skin-option" data-skin="phantom" aria-pressed="false"><img src="assets/ship_phantom.svg" alt="Fantôme" /></button>
+              <button type="button" class="skin-option" data-skin="freighter" aria-pressed="false"><img src="assets/ship_freighter.svg" alt="Cargo" /></button>
             </div>
           </div>
           <button type="button" id="retryBtn" class="primary">Rejouer</button>

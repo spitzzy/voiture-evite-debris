@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="160" height="240" viewBox="0 0 160 240" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="hullB" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7bc6ff"/>
+      <stop offset="100%" stop-color="#1e3d8a"/>
+    </linearGradient>
+    <linearGradient id="glassB" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#d8f0ff" stop-opacity="0.45"/>
+    </linearGradient>
+    <filter id="glowB" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="7" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g transform="translate(80,120)">
+    <ellipse cx="0" cy="42" rx="50" ry="18" fill="#5ecbff" opacity="0.28" filter="url(#glowB)"/>
+    <path d="M0,-100 L-40,36 L0,86 L40,36 Z" fill="url(#hullB)" stroke="#0d203f" stroke-width="2"/>
+    <rect x="-20" y="-44" width="40" height="34" rx="10" fill="url(#glassB)"/>
+    <path d="M-40,6 L-66,30 L-22,34 Z" fill="#0d203f" opacity="0.9"/>
+    <path d="M40,6 L66,30 L22,34 Z" fill="#0d203f" opacity="0.9"/>
+    <rect x="-4" y="-86" width="8" height="54" rx="4" fill="#c6e8ff" opacity="0.85"/>
+    <rect x="-14" y="-18" width="28" height="8" rx="4" fill="#c6e8ff" opacity="0.6"/>
+  </g>
+</svg>

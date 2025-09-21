@@ -8,6 +8,254 @@
     if (manifestLink) manifestLink.remove();
   }
 
+  // Muzzle flash court lors du tir
+  function spawnMuzzleFlash(cx, cy) {
+    const colors = ['#ffe29a', '#ffd166', '#ffffff'];
+    const n = 12;
+    for (let i = 0; i < n; i++) {
+      const angle = Math.random() * Math.PI - Math.PI / 2; // cône vers le haut
+      const speed = rand(180, 360) * DPR;
+      const life = rand(0.06, 0.14);
+      const size = rand(1.2, 2.4) * DPR;
+      particles.push({ x: cx, y: cy, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life, maxLife: life, size, color: randChoice(colors) });
+    }
+  }
+
+  // PostFX: chromatic aberration approximation (RGB fringing)
+  function applyChromaticAberration() {
+    if (!chromaEnabled) return;
+    try {
+      fxCanvas.width = canvas.width; fxCanvas.height = canvas.height;
+      fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+      fxCtx.drawImage(canvas, 0, 0);
+      // Clear main and recompose with shifted hue-rotated copies
+      const prevFilter = ctx.filter;
+      const prevAlpha = ctx.globalAlpha;
+      ctx.globalCompositeOperation = 'lighter';
+      // Red-ish fringe
+      ctx.filter = 'hue-rotate(20deg) saturate(1.2)';
+      ctx.globalAlpha = 0.45;
+      ctx.drawImage(fxCanvas, 1 * DPR, 0);
+      // Cyan-ish fringe
+      ctx.filter = 'hue-rotate(-20deg) saturate(1.2)';
+      ctx.globalAlpha = 0.45;
+      ctx.drawImage(fxCanvas, -1 * DPR, 0);
+      // Restore
+      ctx.filter = prevFilter;
+      ctx.globalAlpha = prevAlpha;
+      ctx.globalCompositeOperation = 'source-over';
+    } catch {}
+  }
+
+  // PostFX: film grain overlay
+  function applyFilmGrain() {
+    if (!grainEnabled) return;
+    try {
+      const w = canvas.width, h = canvas.height;
+      if (grainCanvas.width !== w || grainCanvas.height !== h) { grainCanvas.width = w; grainCanvas.height = h; }
+      const img = grainCtx.createImageData(w, h);
+      const d = img.data;
+      // sparse noise for performance
+      for (let i = 0; i < d.length; i += 4) {
+        const n = (Math.random() * 255) | 0;
+        const a = 28 + (Math.random() * 18) | 0; // alpha 28..46
+        d[i] = n; d[i+1] = n; d[i+2] = n; d[i+3] = a;
+      }
+      grainCtx.putImageData(img, 0, 0);
+      ctx.save();
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.globalAlpha = isNeonTheme() ? 0.22 : 0.15;
+      ctx.drawImage(grainCanvas, 0, 0);
+      ctx.restore();
+    } catch {}
+  }
+
+  // Shards burst
+  function spawnShards(cx, cy) {
+    const n = 36;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + rand(-0.15, 0.15);
+      const sp = rand(260, 680) * DPR;
+      const len = rand(8, 26) * DPR;
+      const rotSpeed = rand(-6, 6);
+      const life = rand(0.45, 1.0);
+      const color = randChoice(['#ffe29a', '#ff7a59', '#ff5d6c', '#ffffff']);
+      shards.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life, maxLife: life, len, rot: a, rotSpeed, color });
+    }
+  }
+  function drawShards(ctx) {
+    if (!shards.length) return;
+    ctx.save();
+    for (const s of shards) {
+      const alpha = Math.max(0, s.life / s.maxLife);
+      ctx.globalAlpha = alpha * 0.95;
+      ctx.translate(s.x, s.y);
+      ctx.rotate(s.rot);
+      ctx.fillStyle = s.color;
+      ctx.fillRect(-1.5 * DPR, -s.len * 0.5, 3 * DPR, s.len);
+      ctx.rotate(-s.rot);
+      ctx.translate(-s.x, -s.y);
+    }
+    ctx.restore();
+  }
+  function drawExplosionOverlays() {
+    if (!state.exploding) return;
+    // screen flash
+    if (megaFX && megaFX.flash > 0.01) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, megaFX.flash);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    }
+    // shockwave glow (screen)
+    if (shockwave) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      const g = ctx.createRadialGradient(shockwave.x, shockwave.y, shockwave.r * 0.6, shockwave.x, shockwave.y, shockwave.r * 1.2);
+      g.addColorStop(0, 'rgba(255,200,120,0.24)');
+      g.addColorStop(1, 'rgba(255,200,120,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(shockwave.x, shockwave.y, shockwave.r * 1.2, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    // glitch bars
+    if (megaFX && megaFX.glitch > 0.02) {
+      ctx.save();
+      const bars = 6;
+      for (let i = 0; i < bars; i++) {
+        const y = Math.random() * canvas.height;
+        const h = rand(2 * DPR, 8 * DPR);
+        ctx.globalAlpha = 0.08 + 0.12 * Math.random() * megaFX.glitch;
+        ctx.fillStyle = ['#ff7bf3','#4ad2ff','#ffd166'][i % 3];
+        ctx.fillRect(0, y, canvas.width, h);
+      }
+      ctx.restore();
+    }
+  }
+
+  // ---- 2D spaceship renderer for player ----
+  function drawPlayerShip2D() {
+    const x = car.x + car.w / 2;
+    const y = car.y + car.h / 2;
+    drawGenericShipProjected(x, y, car.w, car.h, car.color, 1, /*isPlayer*/ true);
+  }
+
+  // ---- 2D bullet ----
+  function drawBullet2D(b) {
+    ctx.save();
+    const x = b.x + b.w / 2;
+    const y = b.y + b.h / 2;
+    // glow
+    ctx.globalCompositeOperation = 'screen';
+    const g = ctx.createRadialGradient(x, y - b.h * 0.3, 2 * DPR, x, y - b.h * 0.3, Math.max(b.w, b.h));
+    g.addColorStop(0, 'rgba(255,220,120,0.8)');
+    g.addColorStop(1, 'rgba(255,220,120,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y - b.h * 0.3, Math.max(b.w, b.h) * 0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    // core
+    ctx.fillStyle = '#ffe29a';
+    roundRect(ctx, b.x + b.w * 0.25, b.y, b.w * 0.5, b.h, 2 * DPR, '#ffe29a');
+    ctx.restore();
+  }
+
+  // ---- Fire control ----
+  function tryFire() {
+    if (state.vehicle !== 'ship') return;
+    if (fireCooldown > 0) return;
+    if ((state.blasterAmmo || 0) <= 0) { showToast('Pas de munitions', 'warn'); return; }
+    const w = 6 * DPR, h = 14 * DPR;
+    const bx = car.x + car.w / 2 - w / 2;
+    const by = car.y - h * 0.6;
+    bullets.push({ x: bx, y: by, w, h, vy: 900, dmg: 1 });
+    fireCooldown = 0.18;
+    state.blasterAmmo = Math.max(0, (state.blasterAmmo || 0) - 1);
+    playClick();
+    // Effets tir
+    spawnMuzzleFlash(bx + w / 2, by + h * 0.2);
+    // petite secousse douce
+    shakeDuration = 0.08; shakeIntensity = 4 * DPR; shakeTime = shakeDuration;
+  }
+
+  // ---- Generic spaceship renderer (used for player and NPCs when vehicle=ship) ----
+  function drawGenericShipProjected(x, y, w, h, color, s, isPlayer) {
+    const left = x - w / 2;
+    const top = y - h / 2;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((isPlayer ? car.tilt : 0) || 0);
+    // Hull
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(0, -h * 0.5);
+    ctx.lineTo(-w * 0.36, h * 0.30);
+    ctx.lineTo(0, h * 0.48);
+    ctx.lineTo(w * 0.36, h * 0.30);
+    ctx.closePath(); ctx.fill();
+    // Cockpit
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    roundRect(ctx, -w * 0.16, -h * 0.18, w * 0.32, h * 0.22, 4 * DPR, ctx.fillStyle);
+    // Fins
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath(); ctx.moveTo(-w * 0.36, h * 0.12); ctx.lineTo(-w * 0.52, h * 0.22); ctx.lineTo(-w * 0.28, h * 0.28); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(w * 0.36, h * 0.12); ctx.lineTo(w * 0.52, h * 0.22); ctx.lineTo(w * 0.28, h * 0.28); ctx.closePath(); ctx.fill();
+    // Thruster glow
+    ctx.save(); ctx.globalCompositeOperation = 'screen';
+    const glow = ctx.createRadialGradient(0, h * 0.44, 2 * DPR, 0, h * 0.44, Math.max(w, 36 * DPR));
+    glow.addColorStop(0, 'rgba(0,245,255,0.35)');
+    glow.addColorStop(1, 'rgba(0,245,255,0)');
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.ellipse(0, h * 0.44, w * 0.35, h * 0.18, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    // Outline neon
+    if (isNeonTheme()) {
+      ctx.save();
+      const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 240);
+      ctx.strokeStyle = `rgba(163,116,255,${0.55 * pulse})`;
+      ctx.lineWidth = Math.max(1, 1.8 * DPR);
+      ctx.beginPath();
+      ctx.moveTo(0, -h * 0.5);
+      ctx.lineTo(-w * 0.36, h * 0.30);
+      ctx.lineTo(0, h * 0.48);
+      ctx.lineTo(w * 0.36, h * 0.30);
+      ctx.closePath(); ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  function drawPlayerShipProjected(x, y, s) {
+    // Base size derived from car but slightly sleeker
+    let w = car.w * s * 1.0;
+    let h = car.h * s * 0.9;
+    drawGenericShipProjected(x, y, w, h, car.color, s, /*isPlayer*/ true);
+  }
+
+  // ---- Bullets (projected) ----
+  function drawBulletProjected(b, x, y, s) {
+    ctx.save();
+    const w = Math.max(4 * DPR, (b.w || 6 * DPR) * s);
+    const h = Math.max(8 * DPR, (b.h || 14 * DPR) * s);
+    // glow
+    ctx.globalCompositeOperation = 'screen';
+    const g = ctx.createRadialGradient(x, y - h * 0.2, 2 * DPR, x, y - h * 0.2, Math.max(w, h));
+    g.addColorStop(0, 'rgba(255,220,120,0.8)');
+    g.addColorStop(1, 'rgba(255,220,120,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y - h * 0.2, Math.max(w, h) * 0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    // core
+    ctx.fillStyle = '#ffe29a';
+    roundRect(ctx, x - w * 0.25, y - h * 0.6, w * 0.5, h * 0.9, 2 * DPR, '#ffe29a');
+    // trail
+    ctx.fillStyle = 'rgba(255,200,80,0.6)';
+    ctx.beginPath(); ctx.moveTo(x, y);
+    ctx.lineTo(x - w * 0.6, y + h * 0.9);
+    ctx.lineTo(x + w * 0.6, y + h * 0.9);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
   // ---- Parterres de fleurs (flower beds) ----
   function makeFlowerBed(roadLeft, roadRight, side) {
     const w = rand(60, 140) * DPR;
@@ -213,6 +461,11 @@
       const s = baseS * sBoost;
       renderables.push({ type: 'powerup', t, x: projectX(p.x + p.w / 2, t), y: yAt(t), s, ref: p });
     }
+    // Bullets
+    for (const b of bullets) {
+      const t = Math.min(1, Math.max(0, ((b.y + b.h * 0.5) - roadTop) / denom));
+      renderables.push({ type: 'bullet', t, x: projectX(b.x + b.w / 2, t), y: yAt(t), s: 0.4 + 2.0 * Math.pow(t, 1.35), ref: b });
+    }
     // Obstacles & NPCs
     for (const ob of obstacles) {
       const t = Math.min(1, Math.max(0, ((ob.y + ob.h * 0.5) - roadTop) / denom));
@@ -243,6 +496,9 @@
       } else if (it.type === 'powerup') {
         w = (it.ref.w || 32 * DPR) * s;
         h = (it.ref.h || 32 * DPR) * s;
+      } else if (it.type === 'bullet') {
+        w = (it.ref.w || 6 * DPR) * s;
+        h = (it.ref.h || 14 * DPR) * s;
       } else if (it.type === 'bed') {
         w = (it.ref.w || 80 * DPR) * s;
         h = (it.ref.h || 16 * DPR) * s;
@@ -261,6 +517,7 @@
       else if (it.type === 'flower') drawFlowerProjected(it.ref, x, y, s);
       else if (it.type === 'bed') drawFlowerBedProjected(it.ref, x, y, s);
       else if (it.type === 'powerup') drawPowerupProjected(it.ref, x, y, s);
+      else if (it.type === 'bullet') drawBulletProjected(it.ref, x, y, s);
       else if (it.type === 'npc') drawNPCProjected(it.ref, x, y, s);
       else drawObstacleProjected(it.ref, x, y, s);
     }
@@ -271,9 +528,13 @@
     const yCar = yAt(tCar);
     // Échelle réduite pour une voiture moins imposante en 3D
     const sCar = 0.75; // valeur fixe plus petite
-    drawCarProjected(xCar, yCar, sCar);
+    if (state.vehicle === 'ship') drawPlayerShipProjected(xCar, yCar, sCar);
+    else drawCarProjected(xCar, yCar, sCar);
 
     ctx.restore();
+    // FX explosion overlays
+    drawShards(ctx);
+    drawExplosionOverlays();
   }
 
   // Version projetée 3D
@@ -306,7 +567,7 @@
     ctx.font = `${Math.max(8, Math.floor(w * 0.7))}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const icons = { shield: '🛡️', slow: '🐢', magnet: '🧲', ghost: '👻', double: '✖️2', coin: '🪙' };
+    const icons = { shield: '🛡️', slow: '🐢', magnet: '🧲', ghost: '👻', double: '✖️2', coin: '🪙', blaster: '🔫' };
     ctx.globalAlpha = 0.95;
     ctx.fillText(icons[p.type] || '★', 0, 0);
     ctx.restore();
@@ -618,6 +879,14 @@
       const price = getPaintPrice(key);
       if (!unlocked && price) btn.title = `Débloquer (${price}🪙)`; else btn.removeAttribute('title');
     });
+  if (chromaBtn) chromaBtn.addEventListener('click', () => {
+    chromaEnabled = !chromaEnabled;
+    chromaBtn.setAttribute('aria-pressed', String(chromaEnabled));
+  });
+  if (grainBtn) grainBtn.addEventListener('click', () => {
+    grainEnabled = !grainEnabled;
+    grainBtn.setAttribute('aria-pressed', String(grainEnabled));
+  });
     // Body style UI
     document.querySelectorAll('[data-body]').forEach(btn => {
       const key = btn.getAttribute('data-body');
@@ -851,11 +1120,14 @@
   const barDoubleEl = document.getElementById('barDouble');
   const comboMultEl = document.getElementById('comboMult');
   const coinsEl = document.getElementById('coins');
+  const blasterAmmoEl = document.getElementById('blasterAmmo');
   // Settings menu
   const settingsBtn = document.getElementById('settingsBtn');
   const settingsMenu = document.getElementById('settingsMenu');
   const reduceFxBtn = document.getElementById('reduceFxBtn');
   const ultraBtn = document.getElementById('ultraBtn');
+  const chromaBtn = document.getElementById('chromaBtn');
+  const grainBtn = document.getElementById('grainBtn');
   // Daily challenges UI
   const challenge1El = document.getElementById('challenge1');
   const challenge2El = document.getElementById('challenge2');
@@ -917,22 +1189,21 @@
     speed: 520, // vitesse latérale px/s
     targetX: null,
     tilt: 0, // rotation en radians (inclinaison)
+    vy: 0,   // vitesse verticale pour 2D (vaisseau)
   };
 
-  // Sprite de voiture + Skins
+  // Sprite/Skins (vaisseaux)
   const carImg = new Image();
   let carImgLoaded = false;
   const SKINS = {
-    mint:   { src: 'assets/car_mint.svg',   color: '#29d19c' },
-    red:    { src: 'assets/car_red.svg',    color: '#ff5d6c' },
-    blue:   { src: 'assets/car_blue.svg',   color: '#4f8cff' },
-    yellow: { src: 'assets/car_yellow.svg', color: '#ffd166' },
-    urban_taxi: { src: 'assets/car_urban_taxi.svg', color: '#ffc400' },
-    vaporwave:  { src: 'assets/car_vaporwave.svg',  color: '#ff4fd8' },
-    hyper:      { src: 'assets/car_hyper.svg',      color: '#00eaff' },
-    micro:      { src: 'assets/car_micro.svg',      color: '#ff9f40' },
+    scout:       { src: 'assets/ship_scout.svg',       color: '#23e5ff' },
+    interceptor: { src: 'assets/ship_interceptor.svg', color: '#ff7a7a' },
+    explorer:    { src: 'assets/ship_explorer.svg',    color: '#7bc6ff' },
+    courier:     { src: 'assets/ship_courier.svg',     color: '#ffcd00' },
+    phantom:     { src: 'assets/ship_phantom.svg',     color: '#a374ff' },
+    freighter:   { src: 'assets/ship_freighter.svg',   color: '#ffd166' },
   };
-  // Structural models per skin for unique silhouettes
+  // Structural models per skin (fallback when car mode)
   const CAR_MODELS = {
     roadster: { wMul: 0.94, hMul: 0.86, roofH: 0.34, wheelYFront: 0.26, wheelYRear: 0.78, spoiler: true, rails: false, grille: false },
     muscle:   { wMul: 1.12, hMul: 0.90, roofH: 0.38, wheelYFront: 0.30, wheelYRear: 0.78, spoiler: false, rails: false, grille: true },
@@ -942,22 +1213,20 @@
     micro:    { wMul: 0.90, hMul: 1.10, roofH: 0.58, wheelYFront: 0.30, wheelYRear: 0.82, spoiler: false, rails: false, grille: false },
   };
   const CAR_MODEL_BY_SKIN = {
-    mint: 'roadster',
-    red: 'muscle',
-    blue: 'hatch',
-    yellow: 'suv',
-    urban_taxi: 'suv',
-    vaporwave: 'roadster',
-    hyper: 'hyper',
-    micro: 'micro',
+    scout: 'roadster',
+    interceptor: 'hyper',
+    explorer: 'hatch',
+    courier: 'suv',
+    phantom: 'roadster',
+    freighter: 'suv',
   };
   function getCarModelParams() {
     const key = car.modelKey || CAR_MODEL_BY_SKIN[selectedSkin] || 'roadster';
     return CAR_MODELS[key] || CAR_MODELS.roadster;
   }
-  let selectedSkin = localStorage.getItem('car_skin') || 'mint';
+  let selectedSkin = localStorage.getItem('car_skin') || 'scout';
   function applySkin(key) {
-    if (!SKINS[key]) key = 'mint';
+    if (!SKINS[key]) key = 'scout';
     // gate premium skins if not unlocked
     if (!isSkinUnlocked(key)) {
       showToast('Skin verrouillé. Débloque-le dans Cosmétiques.', 'warn');
@@ -1024,8 +1293,15 @@
 
   let crtEnabled = false;
   let ditherEnabled = true;
+  let chromaEnabled = false;
+  let grainEnabled = false;
   let crtPattern = null;
   let crtPatternCanvas = null;
+  // Offscreen for FX
+  const fxCanvas = document.createElement('canvas');
+  const fxCtx = fxCanvas.getContext('2d');
+  const grainCanvas = document.createElement('canvas');
+  const grainCtx = grainCanvas.getContext('2d');
 
   // PostFX: pixelisation style 8-bit
   function applyRetroPixelate() {
@@ -1401,6 +1677,10 @@
     const left = x - w / 2;
     const top = y - h / 2;
     const body = n.color || '#5aa7ff';
+    if (state.vehicle === 'ship') {
+      drawGenericShipProjected(x, y, w, h, body, s, /*isPlayer*/ false);
+      return;
+    }
     // underglow (subtle for NPCs)
     if (isNeonTheme()) {
       ctx.save();
@@ -1747,6 +2027,13 @@
     };
   }
   function drawNPC(n) {
+    // If vehicle mode is 'ship', draw as spaceship in 2D and return
+    if (state.vehicle === 'ship') {
+      const x = n.x + n.w / 2;
+      const y = n.y + n.h / 2;
+      drawGenericShipProjected(x, y, n.w, n.h, n.color || '#5aa7ff', 1, /*isPlayer*/ false);
+      return;
+    }
     // Helper to slightly darken/lighten a hex color
     function shade(hex, k) {
       try {
@@ -2292,7 +2579,7 @@
     ctx.font = `${p.w * 0.7}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const icons = { shield: '🛡️', slow: '🐢', magnet: '🧲', ghost: '👻', double: '✖️2', coin: '🪙' };
+    const icons = { shield: '🛡️', slow: '🐢', magnet: '🧲', ghost: '👻', double: '✖️2', coin: '🪙', blaster: '🔫' };
     ctx.globalAlpha = 0.9;
     ctx.fillText(icons[p.type], 0, 0);
     ctx.restore();
@@ -2495,6 +2782,9 @@
     // Visual
     threeD: true,
     carDepth: 0.88, // 3D chase depth position (0=top, 1=bottom)
+    // Vehicle mode
+    vehicle: 'ship', // 'car' | 'ship'
+    blasterAmmo: 0,
   };
   bestEl.textContent = String(state.best);
   if (coinsEl) coinsEl.textContent = String(state.coins);
@@ -2606,17 +2896,42 @@
     return { x, y, w, h, vy: world.baseSpeed * speedMultiplier, isDebris: true, style, layers };
   }
 
-  // Wrapper: spawn obstacle at a random lane center
+  // Wrapper: smarter spawn to prevent safe middle exploit
   function makeObstacle(roadLeft, roadRight) {
     const lanes = 3;
-    const lane = (Math.random() * lanes) | 0; // 0..2
-    const xCenter = roadLeft + (roadRight - roadLeft) * ((lane + 0.5) / lanes);
-    return makeObstacleAtX(roadLeft, roadRight, xCenter);
+    const roadWidth = roadRight - roadLeft;
+    const laneWidth = roadWidth / lanes;
+    const r = Math.random();
+    let xCenter = roadLeft + roadWidth * 0.5;
+
+    if (r < 0.45) {
+      // lane center with jitter: can be off-center within lane
+      const lane = (Math.random() * lanes) | 0; // 0..2
+      xCenter = roadLeft + laneWidth * (lane + 0.5) + rand(-laneWidth * 0.22, laneWidth * 0.22);
+      return makeObstacleAtX(roadLeft, roadRight, xCenter);
+    } else if (r < 0.80) {
+      // near lane boundary (between lanes), discourages riding exactly on the lines
+      const boundary = 1 + ((Math.random() * (lanes - 1)) | 0); // 1..lanes-1
+      xCenter = roadLeft + laneWidth * (boundary) + rand(-laneWidth * 0.15, laneWidth * 0.15);
+      return makeObstacleAtX(roadLeft, roadRight, xCenter);
+    } else {
+      // cross-lane blocker: slightly wider, centered on a boundary
+      const boundary = 1 + ((Math.random() * (lanes - 1)) | 0);
+      xCenter = roadLeft + laneWidth * (boundary) + rand(-laneWidth * 0.08, laneWidth * 0.08);
+      const ob = makeObstacleAtX(roadLeft, roadRight, xCenter);
+      const targetW = Math.min(roadWidth * 0.9, rand(laneWidth * 0.7, laneWidth * 1.1));
+      ob.w = targetW;
+      ob.x = xCenter - ob.w / 2;
+      return ob;
+    }
   }
 
   const obstacles = [];
   let spawnTimer = 0;
   let spawnInterval = 0.9; // secondes, diminue avec la difficulté
+  // Projectiles (bullets)
+  const bullets = [];
+  let fireCooldown = 0; // seconds between shots
   // Powerups
   const powerups = [];
   let puSpawnTimer = 0;
@@ -2626,6 +2941,9 @@
   const particles = [];
   let explosionTimer = 0;
   let explosionDuration = 0.85;
+  // Mega explosion visual FX
+  const shards = []; // {x,y,vx,vy,life,maxLife,len,rot,rotSpeed,color}
+  let megaFX = null; // { flash, glitch, glow }
   // Tremblement d'écran
   let shakeTime = 0, shakeDuration = 0, shakeIntensity = 0;
 
@@ -2822,7 +3140,7 @@
   const sfxLast = { whoosh: 0, horn: 0 };
 
   const keys = new Set();
-  const inputs = { left: false, right: false, up: false, down: false };
+  const inputs = { left: false, right: false, up: false, down: false, shoot: false };
 
   function handleResize() {
     DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -2886,7 +3204,10 @@
     spawnInterval = DIFFICULTIES[diffKey].spawnInterval;
     obstacles.length = 0;
     powerups.length = 0;
+    bullets.length = 0;
     particles.length = 0;
+    shards.length = 0;
+    megaFX = null;
     explosionTimer = 0;
     shakeTime = 0; shakeDuration = 0; shakeIntensity = 0;
     shockwave = null;
@@ -2896,6 +3217,9 @@
     state.magnetTime = 0;
     state.ghostTime = 0;
     state.doubleTime = 0;
+    // Shooter: starting ammo
+    state.blasterAmmo = 5;
+    fireCooldown = 0;
     state.combo = 0;
     state.comboTimer = 0;
     state.runCoins = 0;
@@ -3005,6 +3329,13 @@
     // pause
     if (state.paused) return;
 
+    // shooting cooldown
+    fireCooldown = Math.max(0, fireCooldown - dt);
+    // hold-to-fire in 2D/3D when vaisseau
+    if (state.running && !state.exploding && state.vehicle === 'ship' && inputs.shoot) {
+      tryFire();
+    }
+
     // Si en explosion, on met à jour l'effet et on termine éventuellement
     if (state.exploding) {
       updateExplosion(dt);
@@ -3038,6 +3369,7 @@
     if (barMagnetEl) barMagnetEl.style.width = (state.magnetTime > 0 ? (state.magnetTime / state.magnetDuration) * 100 : 0) + '%';
     if (barGhostEl) barGhostEl.style.width = (state.ghostTime > 0 ? (state.ghostTime / state.ghostDuration) * 100 : 0) + '%';
     if (barDoubleEl) barDoubleEl.style.width = (state.doubleTime > 0 ? (state.doubleTime / state.doubleDuration) * 100 : 0) + '%';
+    if (blasterAmmoEl) blasterAmmoEl.textContent = String(state.blasterAmmo || 0);
     if (comboMultEl) {
       const mult = 1 + state.combo * 0.1;
       comboMultEl.textContent = 'x' + mult.toFixed(1);
@@ -3119,7 +3451,26 @@
       // Sécurité: clamp en pixels pour rester sur la piste
       car.y = clamp(car.y, roadTop, roadBottom - car.h);
     } else {
-      car.y = roadBottom - car.h - 16 * DPR;
+      // 2D: si en mode vaisseau, autoriser le mouvement vertical via flèches haut/bas
+      if (state.vehicle === 'ship') {
+        const vdir2D = (inputs.up ? -1 : 0) + (inputs.down ? 1 : 0);
+        // Inertie verticale douce
+        const accel = car.speed * 2.0; // px/s^2
+        car.vy += vdir2D * accel * dt; // accélération
+        // friction si pas d'entrée
+        if (vdir2D === 0) car.vy *= 0.90;
+        // clamp vitesse max
+        const maxVy = car.speed * 1.2;
+        car.vy = clamp(car.vy, -maxVy, maxVy);
+        // appliquer mouvement
+        car.y += car.vy * dt * DPR;
+        // clamp aux bornes de la route et stopper si dépassement
+        const prevY = car.y;
+        car.y = clamp(car.y, roadTop, roadBottom - car.h);
+        if (car.y !== prevY) car.vy = 0;
+      } else {
+        car.y = roadBottom - car.h - 16 * DPR;
+      }
     }
 
     // Inclinaison de la voiture basée sur la vitesse latérale
@@ -3863,8 +4214,14 @@
       drawPowerup(p);
     }
 
-    // particules d'explosion
+    // bullets (2D)
+    for (const b of bullets) {
+      drawBullet2D(b);
+    }
+
+    // particules + shards d'explosion
     drawParticles(ctx);
+    drawShards(ctx);
 
     // onde de choc
     if (shockwave) {
@@ -3901,7 +4258,8 @@
       }
       ctx.restore();
 
-      drawCarSprite();
+      if (state.vehicle === 'ship') drawPlayerShip2D();
+      else drawCarSprite();
 
       // sous-glow néon sous la voiture (personnalisable)
       if (isNeonTheme()) {
@@ -3997,6 +4355,9 @@
     if (state.blackout) {
       drawBlackoutOverlay();
     }
+    // Overlays méga explosion (flash/glitch/shockwave glow)
+    drawExplosionOverlays();
+
     // Time Attack HUD timer (on-canvas)
     if (state.mode === 'ta' && state.running && state.countdown <= 0) {
       ctx.save();
@@ -4018,6 +4379,8 @@
     // PostFX: scanlines + vignette
     applyBloom();
     applyRetroPixelate();
+    applyChromaticAberration();
+    applyFilmGrain();
     drawCRTMask();
     if (scanlinesEnabled) drawScanlines();
     if (vignetteEnabled) drawVignette();
@@ -4142,8 +4505,11 @@
     const carPoly = getCarPolygon();
     // pré-vérification AABB
     const aabb = polyBounds(carPoly);
-    if (!rectsOverlap(aabb, r)) return false;
-    const rectPoly = rectToPolygon(r);
+    // hitbox forgiveness: dégonfle légèrement la cible
+    const fudge = 2 * DPR;
+    const rr = { x: r.x + fudge, y: r.y + fudge, w: Math.max(0, r.w - 2 * fudge), h: Math.max(0, r.h - 2 * fudge) };
+    if (!rectsOverlap(aabb, rr)) return false;
+    const rectPoly = rectToPolygon(rr);
     return polygonsOverlapSAT(carPoly, rectPoly);
   }
 
@@ -4262,13 +4628,16 @@
     const cx = car.x + car.w / 2;
     const cy = car.y + car.h * 0.5;
     spawnExplosion(cx, cy);
+    spawnShards(cx, cy);
     // tremblement
-    shakeDuration = 0.55;
-    shakeIntensity = 14 * DPR;
+    shakeDuration = 0.75;
+    shakeIntensity = 22 * DPR;
     shakeTime = shakeDuration;
     // onde de choc
     shockwave = { x: cx, y: cy, r: 10 * DPR, alpha: 0.7 };
     playExplosionSound();
+    // Mega FX kickoff
+    megaFX = { flash: 0.85, glitch: 0.5, glow: 1.0 };
   }
 
   function spawnSoftBurst(cx, cy) {
@@ -4332,6 +4701,22 @@
       if (p.life <= 0) particles.splice(i, 1);
     }
 
+    // shards update (lighter gravity, spin)
+    for (let i = shards.length - 1; i >= 0; i--) {
+      const s = shards[i];
+      s.vx *= 0.99; s.vy = s.vy * 0.99 + gravity * 0.35 * dt;
+      s.x += s.vx * dt; s.y += s.vy * dt; s.rot += s.rotSpeed * dt;
+      s.life -= dt;
+      if (s.life <= 0 || s.y > canvas.height + 80 * DPR) shards.splice(i, 1);
+    }
+
+    // mega FX decay
+    if (megaFX) {
+      megaFX.flash *= Math.pow(0.0001, dt / 0.6); // fast decay
+      megaFX.glitch *= Math.pow(0.0001, dt / 0.9);
+      if (megaFX.flash < 0.02 && megaFX.glitch < 0.02) megaFX = null;
+    }
+
     // onde de choc
     if (shockwave) {
       shockwave.r += 380 * dt * DPR;
@@ -4375,6 +4760,15 @@
   // Entrées clavier
   window.addEventListener('keydown', (e) => {
     if (e.repeat) return;
+    // Fire blaster if available
+    if (e.code === 'Space') {
+      if (state.running && !state.exploding) {
+        inputs.shoot = true;
+        tryFire();
+        e.preventDefault();
+        return;
+      }
+    }
     if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') inputs.left = true;
     if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') inputs.right = true;
     if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') inputs.up = true;
@@ -4385,6 +4779,7 @@
     if (state.gameOver && (e.key === ' ' || e.key === 'Enter')) startGame();
   });
   window.addEventListener('keyup', (e) => {
+    if (e.code === 'Space') { inputs.shoot = false; e.preventDefault(); }
     if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') inputs.left = false;
     if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') inputs.right = false;
     if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') inputs.up = false;
@@ -4659,16 +5054,17 @@
     // Weighted distribution: coin 45%, others share remaining
     const r = Math.random();
     let type = 'shield';
-    if (r < 0.45) type = 'coin';
-    else if (r < 0.65) type = 'slow';
-    else if (r < 0.8) type = 'magnet';
-    else if (r < 0.9) type = 'ghost';
+    if (r < 0.40) type = 'coin';
+    else if (r < 0.58) type = 'slow';
+    else if (r < 0.72) type = 'magnet';
+    else if (r < 0.82) type = 'ghost';
+    else if (r < 0.92) type = 'blaster';
     else type = 'double';
     const w = 32 * DPR, h = 32 * DPR;
     const x = rand(roadLeft + w, roadRight - w);
     const y = -h - 20 * DPR;
     const vy = world.baseSpeed * 0.7;
-    const colors = { shield: '#4f8cff', slow: '#ffd166', magnet: '#ff7bf3', ghost: '#41e0c9', double: '#ffae42', coin: '#ffcc33' };
+    const colors = { shield: '#4f8cff', slow: '#ffd166', magnet: '#ff7bf3', ghost: '#41e0c9', double: '#ffae42', coin: '#ffcc33', blaster: '#ff9f40' };
     return { x, y, w, h, vy, type, color: colors[type] };
   }
   function pickPowerupType() {
@@ -4698,6 +5094,10 @@
       if (!hasAch('first_coin')) unlockAch('first_coin', 'Première pièce', 'Collecter une pièce');
       if (state.runCoins >= 10 && !hasAch('collect_10')) unlockAch('collect_10', 'Chasseur', 'Collecter 10 pièces en une partie');
       bumpDaily('collect_coins', add);
+    } else if (type === 'blaster') {
+      const add = 10 + ((Math.random() < 0.25) ? 5 : 0); // 10 or 15 ammo
+      state.blasterAmmo = Math.min(99, (state.blasterAmmo || 0) + add);
+      showToast(`Blaster +${add} (ammo: ${state.blasterAmmo})`, 'success');
     }
   }
 
