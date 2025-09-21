@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="128" viewBox="0 0 64 128">
+  <defs>
+    <linearGradient id="bodyY" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFD54A"/>
+      <stop offset="0.55" stop-color="#FFC400"/>
+      <stop offset="1" stop-color="#E8AC00"/>
+    </linearGradient>
+    <linearGradient id="glassY" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EAF4FF" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#B9C7E2" stop-opacity="0.75"/>
+    </linearGradient>
+    <linearGradient id="shadowY" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#000" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.5"/>
+    </linearGradient>
+  </defs>
+  <!-- soft shadow -->
+  <ellipse cx="32" cy="112" rx="20" ry="8" fill="#000" opacity="0.25"/>
+
+  <!-- body -->
+  <rect x="12" y="10" width="40" height="108" rx="8" fill="url(#bodyY)"/>
+  <!-- roof panel -->
+  <rect x="18" y="34" width="28" height="28" rx="6" fill="#F9BE00"/>
+
+  <!-- checker stripe -->
+  <g transform="translate(16,60)">
+    <rect x="0" y="0" width="32" height="8" rx="3" fill="#111" opacity="0.9"/>
+    <g fill="#FFD54A">
+      <rect x="2" y="2" width="4" height="4"/>
+      <rect x="10" y="2" width="4" height="4"/>
+      <rect x="18" y="2" width="4" height="4"/>
+      <rect x="26" y="2" width="4" height="4"/>
+    </g>
+  </g>
+
+  <!-- windows -->
+  <rect x="16" y="20" width="32" height="16" rx="5" fill="url(#glassY)"/>
+  <rect x="18" y="84" width="28" height="14" rx="4" fill="url(#glassY)"/>
+
+  <!-- doors split line -->
+  <rect x="31.5" y="18" width="1" height="92" fill="#000" opacity="0.22"/>
+
+  <!-- door handles -->
+  <rect x="18" y="66" width="8" height="3" rx="2" fill="#fff" opacity="0.5"/>
+  <rect x="38" y="66" width="8" height="3" rx="2" fill="#fff" opacity="0.5"/>
+
+  <!-- wheel arches -->
+  <g fill="none" stroke="#000" opacity="0.32" stroke-width="2" stroke-linecap="round">
+    <path d="M18 30 a10 10 0 0 1 28 0"/>
+    <path d="M18 98 a10 10 0 0 1 28 0"/>
+  </g>
+
+  <!-- bumpers gloss -->
+  <rect x="14" y="10" width="36" height="6" rx="3" fill="#fff" opacity="0.18"/>
+  <rect x="14" y="112" width="36" height="6" rx="3" fill="#000" opacity="0.25"/>
+
+  <!-- headlights -->
+  <g opacity="0.85">
+    <rect x="18" y="12" width="8" height="6" rx="2" fill="#FFF7C2"/>
+    <rect x="38" y="12" width="8" height="6" rx="2" fill="#FFF7C2"/>
+  </g>
+  <!-- taillights -->
+  <g opacity="0.9">
+    <rect x="18" y="110" width="8" height="6" rx="2" fill="#FF6B6B"/>
+    <rect x="38" y="110" width="8" height="6" rx="2" fill="#FF6B6B"/>
+  </g>
+
+  <!-- subtle outer stroke -->
+  <rect x="12" y="10" width="40" height="108" rx="8" fill="none" stroke="#111" stroke-opacity="0.35"/>
+</svg>

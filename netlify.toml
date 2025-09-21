@@ -1,0 +1,19 @@
+# Netlify configuration for a static HTML5 Canvas game
+[build]
+  publish = "."
+  command = ""
+
+# Cache static assets lightly to ensure quick updates
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=600"
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "no-referrer-when-downgrade"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"

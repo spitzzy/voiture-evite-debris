@@ -1,0 +1,23 @@
+# Node and build artifacts
+node_modules/
+dist/
+build/
+.cache/
+
+# OS/Editor junk
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+
+# Env
+.env
+.env.*
+
+# Netlify local
+.netlify/
+
+# Misc
+coverage/
+.tmp/

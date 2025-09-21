@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>Voiture: évite les débris</title>
+    <meta name="theme-color" content="#1a103d" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="favicon.svg?v=1" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header id="hud">
+        <div class="stat"><span>Score</span><strong id="score">0</strong></div>
+        <div class="stat"><span>Meilleur</span><strong id="best">0</strong></div>
+        <div class="stat"><span>Coins</span><strong id="coins">0</strong></div>
+        <div class="spacer"></div>
+        <div id="powerups" class="powerups" aria-label="Pouvoirs actifs">
+          <div class="pu pu-shield" title="Bouclier">
+            <span class="pu-ico">🛡️</span>
+            <span id="shieldCount">0</span>
+          </div>
+          <div class="pu pu-slow" title="Ralentir">
+            <span class="pu-ico">🐢</span>
+            <div class="bar"><div id="barSlow"></div></div>
+          </div>
+          <div class="pu pu-magnet" title="Aimant">
+            <span class="pu-ico">🧲</span>
+            <div class="bar"><div id="barMagnet"></div></div>
+          </div>
+          <div class="pu pu-ghost" title="Fantôme (intangibilité)">
+            <span class="pu-ico">👻</span>
+            <div class="bar"><div id="barGhost"></div></div>
+          </div>
+          <div class="pu pu-double" title="Score x2">
+            <span class="pu-ico">✖️2</span>
+            <div class="bar"><div id="barDouble"></div></div>
+          </div>
+          <span id="comboMult" class="hud-badge" title="Multiplicateur combo">x1.0</span>
+        </div>
+        <!-- Settings menu trigger and container -->
+        <button type="button" id="settingsBtn" class="icon-btn" aria-expanded="false" aria-controls="settingsMenu" title="Réglages">⚙️</button>
+        <div id="settingsMenu" class="settings-menu hidden" role="menu" aria-label="Réglages">
+          <div class="settings-content" id="settingsContent">
+            <!-- Contrôles de réglages -->
+            <div class="settings-group">
+              <h3>Affichage</h3>
+              <button type="button" id="nextSectionBtn" class="icon-btn" title="Section suivante (T)">⏭️</button>
+              <button type="button" id="rainBtn" class="icon-btn" aria-pressed="true" title="Pluie On/Off">🌧️</button>
+              <button type="button" id="scanBtn" class="icon-btn" aria-pressed="true" title="Scanlines On/Off">📺</button>
+              <button type="button" id="vignetteBtn" class="icon-btn" aria-pressed="true" title="Vignette On/Off">🕳️</button>
+              <button type="button" id="bloomBtn" class="icon-btn" aria-pressed="true" title="Bloom On/Off">✨</button>
+              <button type="button" id="retroBtn" class="icon-btn" aria-pressed="false" title="Mode 8‑bit On/Off">🕹️</button>
+              <button type="button" id="crtBtn" class="icon-btn" aria-pressed="false" title="CRT Mask On/Off">🖥️</button>
+              <label class="hud-label" for="pixelSize" title="Taille des pixels 8‑bit">Pixels
+                <input type="range" id="pixelSize" min="1" max="6" step="1" value="3" />
+              </label>
+              <button type="button" id="ditherBtn" class="icon-btn" aria-pressed="true" title="Dithering On/Off">💠</button>
+              <button type="button" id="reduceFxBtn" class="icon-btn" aria-pressed="false" title="Réduire les effets (mobile)">📱 Réduire effets</button>
+            </div>
+
+            <div class="settings-group">
+              <h3>Audio</h3>
+              <label class="hud-label" for="musicVol" title="Volume musique">Musique
+                <input type="range" id="musicVol" min="0" max="1" step="0.05" value="0.5" />
+              </label>
+              <label class="hud-label" for="sfxVol" title="Volume SFX">SFX
+                <input type="range" id="sfxVol" min="0" max="1" step="0.05" value="0.7" />
+              </label>
+              <button type="button" id="muteBtn" class="icon-btn" aria-pressed="false" title="Son On/Off">🔊</button>
+            </div>
+
+            <div class="settings-group">
+              <h3>Gameplay</h3>
+              <button type="button" id="npcBtn" class="icon-btn" aria-pressed="true" title="Trafic NPC On/Off">🚗</button>
+              <span id="npcCounter" class="hud-badge" title="Densité du trafic NPC">NPC: 0</span>
+              <label class="hud-label" for="npcDensity" title="Densité du trafic NPC">Densité
+                <input type="range" id="npcDensity" min="0" max="3" step="0.1" value="1" />
+              </label>
+              <button type="button" id="hornBtn" class="icon-btn" title="Klaxon (H)">📣</button>
+              <button type="button" id="pauseBtn" class="icon-btn" title="Pause (P)">⏸️</button>
+              <button type="button" id="garageBtn" class="icon-btn" title="Garage / Boutique">🛒 Garage</button>
+            </div>
+
+            <div class="settings-group">
+              <h3>Scores</h3>
+              <button type="button" id="scoresBtn" class="icon-btn" title="Meilleurs scores">🏆</button>
+            </div>
+
+            <div class="settings-group" id="dailyChallenges">
+              <h3>Défis du jour</h3>
+              <ul style="margin:6px 0 0 0; padding-left: 18px;">
+                <li id="challenge1">—</li>
+                <li id="challenge2">—</li>
+                <li id="challenge3">—</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <canvas id="game" width="800" height="1200" aria-label="Jeu de course"></canvas>
+
+      <div id="overlay" class="overlay">
+        <div class="panel" id="menu">
+          <h1>Évite les débris</h1>
+          <p>Conduis la voiture et évite les obstacles aussi longtemps que possible.</p>
+          <ul class="help">
+            <li><b>Clavier</b>: ← → ou A / D</li>
+            <li><b>Tactile</b>: toucher gauche/droite ou glisser</li>
+          </ul>
+          <div class="skins">
+            <h2>Choisis ta voiture</h2>
+            <div id="skinGrid" class="skin-grid">
+              <button type="button" class="skin-option" data-skin="mint" aria-label="Voiture menthe" aria-pressed="false">
+                <img src="assets/car_mint.svg" alt="Voiture menthe" loading="eager" />
+              </button>
+              <button type="button" class="skin-option" data-skin="red" aria-label="Voiture rouge" aria-pressed="false">
+                <img src="assets/car_red.svg" alt="Voiture rouge" loading="eager" />
+              </button>
+              <button type="button" class="skin-option" data-skin="blue" aria-label="Voiture bleue" aria-pressed="false">
+                <img src="assets/car_blue.svg" alt="Voiture bleue" loading="eager" />
+              </button>
+              <button type="button" class="skin-option" data-skin="yellow" aria-label="Voiture jaune" aria-pressed="false">
+                <img src="assets/car_yellow.svg" alt="Voiture jaune" loading="eager" />
+              </button>
+              <button type="button" class="skin-option" data-skin="urban_taxi" aria-label="Urban Taxi noir/jaune" aria-pressed="false">
+                <img src="assets/car_urban_taxi.svg" alt="Urban Taxi noir/jaune" loading="eager" />
+              </button>
+              <button type="button" class="skin-option" data-skin="vaporwave" aria-label="Vaporwave rose/magenta" aria-pressed="false">
+                <img src="assets/car_vaporwave.svg" alt="Vaporwave rose/magenta" loading="eager" />
+              </button>
+            </div>
+          </div>
+          <div class="difficulty">
+            <h2>Difficulté</h2>
+            <div class="difficulty-grid" id="difficultyGrid">
+              <button type="button" class="difficulty-option" data-diff="easy" aria-pressed="false">Facile</button>
+              <button type="button" class="difficulty-option" data-diff="normal" aria-pressed="false">Normal</button>
+              <button type="button" class="difficulty-option" data-diff="hard" aria-pressed="false">Difficile</button>
+            </div>
+          </div>
+          <div class="difficulty">
+            <h2>Mode</h2>
+            <div class="difficulty-grid" id="modeGrid">
+              <button type="button" class="difficulty-option" data-mode="classic" aria-pressed="true">Classique</button>
+              <button type="button" class="difficulty-option" data-mode="ta" aria-pressed="false">Time Attack 90s</button>
+            </div>
+          </div>
+          <button type="button" id="startBtn" class="primary">Jouer</button>
+        </div>
+        <div class="panel hidden" id="gameover">
+          <h1>Collision !</h1>
+          <p id="finalScore">Score: 0</p>
+          <p id="finalBest">Meilleur: 0</p>
+          <p id="finalGrade">Grade: —</p>
+          <div id="initialsEntry" class="initials-entry hidden">
+            <p>Nouveau record ! Entre tes initiales (3 lettres):</p>
+            <div class="initials-row">
+              <input id="initialsInput" maxlength="3" placeholder="AAA" aria-label="Initiales" />
+              <button type="button" id="saveScoreBtn" class="primary">Valider</button>
+            </div>
+          </div>
+          <div class="skins">
+            <h2>Changer de voiture</h2>
+            <div class="skin-grid">
+              <button type="button" class="skin-option" data-skin="mint" aria-pressed="false"><img src="assets/car_mint.svg" alt="Voiture menthe" /></button>
+              <button type="button" class="skin-option" data-skin="red" aria-pressed="false"><img src="assets/car_red.svg" alt="Voiture rouge" /></button>
+              <button type="button" class="skin-option" data-skin="blue" aria-pressed="false"><img src="assets/car_blue.svg" alt="Voiture bleue" /></button>
+              <button type="button" class="skin-option" data-skin="yellow" aria-pressed="false"><img src="assets/car_yellow.svg" alt="Voiture jaune" /></button>
+              <button type="button" class="skin-option" data-skin="urban_taxi" aria-pressed="false"><img src="assets/car_urban_taxi.svg" alt="Urban Taxi noir/jaune" /></button>
+              <button type="button" class="skin-option" data-skin="vaporwave" aria-pressed="false"><img src="assets/car_vaporwave.svg" alt="Vaporwave rose/magenta" /></button>
+            </div>
+          </div>
+          <button type="button" id="retryBtn" class="primary">Rejouer</button>
+        </div>
+        <div class="panel hidden" id="paused">
+          <h1>Pause</h1>
+          <p>Appuie sur P ou clique sur Reprendre pour continuer.</p>
+          <button type="button" id="resumeBtn" class="primary">Reprendre</button>
+        </div>
+        <div class="panel hidden" id="scoresPanel">
+          <h1>Meilleurs scores</h1>
+          <div style="display:flex; gap:8px; justify-content:center; margin-bottom:10px;">
+            <button type="button" class="icon-btn" id="scoresTabClassic" aria-pressed="true">Classique</button>
+            <button type="button" class="icon-btn" id="scoresTabTA" aria-pressed="false">Time Attack</button>
+          </div>
+          <ol id="scoresList" class="scores-list"></ol>
+          <button type="button" id="closeScoresBtn" class="primary">Fermer</button>
+        </div>
+      </div>
+
+      <div id="touchZones">
+        <div id="leftZone" aria-label="Aller à gauche"></div>
+        <div id="rightZone" aria-label="Aller à droite"></div>
+      </div>
+    </div>
+
+    <!-- Garage / Boutique modal -->
+    <div id="garageModal" class="overlay hidden" aria-hidden="true">
+      <div class="panel" role="dialog" aria-labelledby="garageTitle">
+        <h1 id="garageTitle">Garage / Boutique</h1>
+        <div style="display:flex; gap:8px; justify-content:center; margin-bottom:10px;">
+          <button type="button" class="icon-btn" id="tabUpgradesBtn" aria-pressed="true">Améliorations</button>
+          <button type="button" class="icon-btn" id="tabCosmeticsBtn" aria-pressed="false">Cosmétiques</button>
+        </div>
+        <div id="tab-upgrades" class="upgrade-list">
+          <div class="upgrade-item" data-upgrade="steering">
+            <div class="info">
+              <h3>Direction</h3>
+              <p>Réactivité latérale accrue.</p>
+              <span class="level" id="lvl_steering">Niv. 0</span>
+            </div>
+            <button type="button" class="primary buy-btn" data-upgrade="steering" id="buy_steering">Acheter <span class="price" id="pr_steering">10</span> 🪙</button>
+          </div>
+          <div class="upgrade-item" data-upgrade="shield">
+            <div class="info">
+              <h3>Bouclier+</h3>
+              <p>Capacité de bouclier augmentée.</p>
+              <span class="level" id="lvl_shield">Niv. 0</span>
+            </div>
+            <button type="button" class="primary buy-btn" data-upgrade="shield" id="buy_shield">Acheter <span class="price" id="pr_shield">15</span> 🪙</button>
+          </div>
+          <div class="upgrade-item" data-upgrade="magnet">
+            <div class="info">
+              <h3>Aimant+</h3>
+              <p>Durée d'attraction augmentée.</p>
+              <span class="level" id="lvl_magnet">Niv. 0</span>
+            </div>
+            <button type="button" class="primary buy-btn" data-upgrade="magnet" id="buy_magnet">Acheter <span class="price" id="pr_magnet">15</span> 🪙</button>
+          </div>
+          <div class="upgrade-item" data-upgrade="ghost">
+            <div class="info">
+              <h3>Fantôme+</h3>
+              <p>Durée d'intangibilité augmentée.</p>
+              <span class="level" id="lvl_ghost">Niv. 0</span>
+            </div>
+            <button type="button" class="primary buy-btn" data-upgrade="ghost" id="buy_ghost">Acheter <span class="price" id="pr_ghost">20</span> 🪙</button>
+          </div>
+        </div>
+        <div id="tab-cosmetics" class="upgrade-list hidden">
+          <div class="upgrade-item">
+            <div class="info">
+              <h3>Skins premium</h3>
+              <p>Débloque des carrosseries spéciales.</p>
+            </div>
+          </div>
+          <div class="upgrade-item">
+            <button type="button" class="primary buy-btn" id="buy_skin_urban_taxi">Débloquer Urban Taxi — <span class="price">50</span> 🪙</button>
+            <button type="button" class="primary buy-btn" id="buy_skin_vaporwave">Débloquer Vaporwave — <span class="price">60</span> 🪙</button>
+          </div>
+          <div class="upgrade-item">
+            <div class="info">
+              <h3>Traînée</h3>
+              <p>Couleur du sillage de ta voiture.</p>
+            </div>
+            <div>
+              <button type="button" class="icon-btn" data-trail="cyan">Cyan</button>
+              <button type="button" class="icon-btn" data-trail="gold">Or</button>
+              <button type="button" class="icon-btn" data-trail="magenta">Magenta</button>
+            </div>
+          </div>
+          <div class="upgrade-item">
+            <div class="info">
+              <h3>Peinture premium</h3>
+              <p>Teinte spéciale appliquée sur la carrosserie.</p>
+            </div>
+            <div>
+              <button type="button" class="icon-btn" data-paint="none">Aucune</button>
+              <button type="button" class="icon-btn" data-paint="pearl">Blanc nacré</button>
+              <button type="button" class="icon-btn" data-paint="graphite">Graphite</button>
+              <button type="button" class="icon-btn" data-paint="cyan">Cyan</button>
+              <button type="button" class="icon-btn" data-paint="pink">Rose</button>
+              <button type="button" class="icon-btn" data-paint="gold">Or</button>
+            </div>
+          </div>
+          <div class="upgrade-item">
+            <div class="info">
+              <h3>Néon sous-châssis</h3>
+              <p>Couleur de l'under‑glow.</p>
+            </div>
+            <div>
+              <button type="button" class="icon-btn" data-underglow="none">Aucun</button>
+              <button type="button" class="icon-btn" data-underglow="cyan">Cyan</button>
+              <button type="button" class="icon-btn" data-underglow="purple">Violet</button>
+              <button type="button" class="icon-btn" data-underglow="pink">Rose</button>
+            </div>
+          </div>
+          <div class="upgrade-item">
+            <div class="info">
+              <h3>Sticker toit</h3>
+              <p>Décalcomanie stylée sur le toit.</p>
+            </div>
+            <div>
+              <button type="button" class="icon-btn" data-sticker="none">Aucun</button>
+              <button type="button" class="icon-btn" data-sticker="star">⭐</button>
+              <button type="button" class="icon-btn" data-sticker="bolt">⚡</button>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px; display:flex; gap:10px; justify-content:center;">
+          <button type="button" id="closeGarageBtn" class="icon-btn">Fermer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toasts" aria-live="polite" aria-atomic="true"></div>
+
+    <script defer src="script.js"></script>
+  </body>
+</html>

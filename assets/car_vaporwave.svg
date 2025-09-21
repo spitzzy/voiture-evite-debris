@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="128" viewBox="0 0 64 128">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FF66C4"/>
+      <stop offset="0.55" stop-color="#FF4FD8"/>
+      <stop offset="1" stop-color="#C432FE"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#D7FDFF" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#7DE8FF" stop-opacity="0.85"/>
+    </linearGradient>
+  </defs>
+  <!-- shadow -->
+  <ellipse cx="32" cy="112" rx="20" ry="8" fill="#000" opacity="0.25"/>
+
+  <!-- body -->
+  <rect x="12" y="10" width="40" height="108" rx="8" fill="url(#body)"/>
+
+  <!-- twin neon stripes -->
+  <rect x="25" y="10" width="2" height="108" fill="#00F0FF" opacity="0.95"/>
+  <rect x="37" y="10" width="2" height="108" fill="#00F0FF" opacity="0.95"/>
+  <rect x="24" y="10" width="1" height="108" fill="#85FFF8" opacity="0.6"/>
+  <rect x="39" y="10" width="1" height="108" fill="#85FFF8" opacity="0.6"/>
+
+  <!-- windows -->
+  <rect x="16" y="20" width="32" height="16" rx="5" fill="url(#glass)"/>
+  <rect x="18" y="84" width="28" height="14" rx="4" fill="url(#glass)"/>
+
+  <!-- door line -->
+  <rect x="31.5" y="18" width="1" height="92" fill="#000" opacity="0.22"/>
+
+  <!-- handles -->
+  <rect x="18" y="66" width="8" height="3" rx="2" fill="#fff" opacity="0.45"/>
+  <rect x="38" y="66" width="8" height="3" rx="2" fill="#fff" opacity="0.45"/>
+
+  <!-- wheel arches -->
+  <g fill="none" stroke="#000" opacity="0.3" stroke-width="2" stroke-linecap="round">
+    <path d="M18 30 a10 10 0 0 1 28 0"/>
+    <path d="M18 98 a10 10 0 0 1 28 0"/>
+  </g>
+
+  <!-- bumpers gloss/shade -->
+  <rect x="14" y="10" width="36" height="6" rx="3" fill="#fff" opacity="0.16"/>
+  <rect x="14" y="112" width="36" height="6" rx="3" fill="#000" opacity="0.25"/>
+
+  <!-- headlights cyan, tail lights pink -->
+  <g opacity="0.9">
+    <rect x="18" y="12" width="8" height="6" rx="2" fill="#CFFFFF"/>
+    <rect x="38" y="12" width="8" height="6" rx="2" fill="#CFFFFF"/>
+  </g>
+  <g opacity="0.95">
+    <rect x="18" y="110" width="8" height="6" rx="2" fill="#FF6BD6"/>
+    <rect x="38" y="110" width="8" height="6" rx="2" fill="#FF6BD6"/>
+  </g>
+
+  <!-- subtle outline -->
+  <rect x="12" y="10" width="40" height="108" rx="8" fill="none" stroke="#111" stroke-opacity="0.35"/>
+</svg>
