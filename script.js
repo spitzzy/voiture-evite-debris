@@ -4977,8 +4977,15 @@
   } catch {}
   // Daily challenges
   ensureDaily();
-  // Auto-start game on load when opened directly from file
-  startGame();
+  // Start at menu with Garage open (instead of ship selection)
+  try {
+    overlay.style.display = 'grid';
+    overlay.style.pointerEvents = 'auto';
+    overlay.setAttribute('aria-hidden', 'false');
+    menuPanel.classList.remove('hidden');
+    gameoverPanel.classList.add('hidden');
+    openGarage();
+  } catch {}
 
   // Pause/Resume logique
   function togglePause(forceResume = false) {
