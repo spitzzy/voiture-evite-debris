@@ -51,6 +51,7 @@
               <button type="button" id="scanBtn" class="icon-btn" aria-pressed="true" title="Scanlines On/Off">📺</button>
               <button type="button" id="vignetteBtn" class="icon-btn" aria-pressed="true" title="Vignette On/Off">🕳️</button>
               <button type="button" id="bloomBtn" class="icon-btn" aria-pressed="true" title="Bloom On/Off">✨</button>
+              <button type="button" id="ultraBtn" class="icon-btn" aria-pressed="false" title="Ultra Neon (saturation + glow)">🌈 Ultra Neon</button>
               <button type="button" id="retroBtn" class="icon-btn" aria-pressed="false" title="Mode 8‑bit On/Off">🕹️</button>
               <button type="button" id="crtBtn" class="icon-btn" aria-pressed="false" title="CRT Mask On/Off">🖥️</button>
               <label class="hud-label" for="pixelSize" title="Taille des pixels 8‑bit">Pixels
@@ -131,6 +132,12 @@
               <button type="button" class="skin-option" data-skin="vaporwave" aria-label="Vaporwave rose/magenta" aria-pressed="false">
                 <img src="assets/car_vaporwave.svg" alt="Vaporwave rose/magenta" loading="eager" />
               </button>
+              <button type="button" class="skin-option" data-skin="hyper" aria-label="Hypercar cyan" aria-pressed="false">
+                <img src="assets/car_hyper.svg" alt="Hypercar cyan" loading="eager" />
+              </button>
+              <button type="button" class="skin-option" data-skin="micro" aria-label="Microcar orange" aria-pressed="false">
+                <img src="assets/car_micro.svg" alt="Microcar orange" loading="eager" />
+              </button>
             </div>
           </div>
           <div class="difficulty">
@@ -171,6 +178,8 @@
               <button type="button" class="skin-option" data-skin="yellow" aria-pressed="false"><img src="assets/car_yellow.svg" alt="Voiture jaune" /></button>
               <button type="button" class="skin-option" data-skin="urban_taxi" aria-pressed="false"><img src="assets/car_urban_taxi.svg" alt="Urban Taxi noir/jaune" /></button>
               <button type="button" class="skin-option" data-skin="vaporwave" aria-pressed="false"><img src="assets/car_vaporwave.svg" alt="Vaporwave rose/magenta" /></button>
+              <button type="button" class="skin-option" data-skin="hyper" aria-pressed="false"><img src="assets/car_hyper.svg" alt="Hypercar cyan" /></button>
+              <button type="button" class="skin-option" data-skin="micro" aria-pressed="false"><img src="assets/car_micro.svg" alt="Microcar orange" /></button>
             </div>
           </div>
           <button type="button" id="retryBtn" class="primary">Rejouer</button>
@@ -259,6 +268,19 @@
               <button type="button" class="icon-btn" data-trail="cyan">Cyan</button>
               <button type="button" class="icon-btn" data-trail="gold">Or</button>
               <button type="button" class="icon-btn" data-trail="magenta">Magenta</button>
+            </div>
+          </div>
+          <div class="upgrade-item">
+            <div class="info">
+              <h3>Carrosserie</h3>
+              <p>Forme du châssis.</p>
+            </div>
+            <div>
+              <button type="button" class="icon-btn" data-body="stock">Stock</button>
+              <button type="button" class="icon-btn" data-body="sport">Sport</button>
+              <button type="button" class="icon-btn" data-body="wide">Wide</button>
+              <button type="button" class="icon-btn" data-body="slim">Slim</button>
+              <button type="button" class="icon-btn" data-body="suv">SUV</button>
             </div>
           </div>
           <div class="upgrade-item">

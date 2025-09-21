@@ -136,21 +136,51 @@ html, body {
 .skin-option {
   appearance: none;
   border: 2px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.03);
-  border-radius: 10px;
-  padding: 8px;
+  background: radial-gradient(180px 140px at 50% 20%, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  border-radius: 14px;
+  padding: 10px;
   cursor: pointer;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
-  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 8px 20px rgba(0,0,0,0.35);
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, filter 140ms ease;
+  position: relative;
+  overflow: hidden;
 }
-.skin-option:hover { transform: translateY(-2px); }
+.skin-option:hover { transform: translateY(-3px); filter: brightness(1.02); }
 .skin-option:focus { outline: 2px solid var(--primary); outline-offset: 2px; }
 .skin-option.selected,
 .skin-option[aria-pressed="true"] {
   border-color: var(--primary);
-  box-shadow: 0 6px 16px rgba(79, 140, 255, 0.25), inset 0 0 0 1px rgba(79, 140, 255, 0.25);
+  box-shadow: 0 12px 28px rgba(79, 140, 255, 0.28), inset 0 0 0 1px rgba(79, 140, 255, 0.28);
 }
-.skin-option img { display: block; width: 100%; height: auto; pointer-events: none; }
+.skin-option img { 
+  display: block; width: 100%; height: auto; pointer-events: none; 
+  border-radius: 12px; 
+  box-shadow: 0 10px 22px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+
+/* glossy highlight */
+.skin-option::before {
+  content: '';
+  position: absolute; inset: 0 0 auto 0; height: 45%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.02));
+  mix-blend-mode: screen; pointer-events: none;
+}
+
+/* label chip using data-skin */
+.skin-option::after {
+  content: attr(data-skin);
+  position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; letter-spacing: 0.4px; text-transform: uppercase;
+  color: #dfe9ff; background: rgba(12,16,28,0.8);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,245,255,0.08) inset;
+  pointer-events: none;
+}
+
+/* premium skins: star label */
+.skin-option[data-skin="urban_taxi"]::after { content: '★ Urban Taxi'; }
+.skin-option[data-skin="vaporwave"]::after { content: '★ Vaporwave'; }
 
 /* Settings dropdown (HUD) */
 .settings-menu { 
