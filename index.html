@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <title>Voiture: évite les débris</title>
+    <title>Vaisseaux: évite les débris</title>
     <meta name="theme-color" content="#1a103d" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="favicon.svg?v=1" type="image/svg+xml" />
@@ -80,7 +80,7 @@
 
             <div class="settings-group">
               <h3>Gameplay</h3>
-              <button type="button" id="npcBtn" class="icon-btn" aria-pressed="true" title="Trafic NPC On/Off">🚗</button>
+              <button type="button" id="npcBtn" class="icon-btn" aria-pressed="true" title="Trafic vaisseaux NPC On/Off">🚀</button>
               <span id="npcCounter" class="hud-badge" title="Densité du trafic NPC">NPC: 0</span>
               <label class="hud-label" for="npcDensity" title="Densité du trafic NPC">Densité
                 <input type="range" id="npcDensity" min="0" max="3" step="0.1" value="1" />
@@ -107,14 +107,14 @@
         </div>
       </header>
 
-      <canvas id="game" width="800" height="1200" aria-label="Jeu de course"></canvas>
+      <canvas id="game" width="800" height="1200" aria-label="Jeu de pilotage (vaisseaux)"></canvas>
 
       <div id="overlay" class="overlay">
         <div class="panel" id="menu">
           <h1>Évite les débris</h1>
-          <p>Conduis la voiture et évite les obstacles aussi longtemps que possible.</p>
+          <p>Pilote ton vaisseau et évite les obstacles aussi longtemps que possible.</p>
           <ul class="help">
-            <li><b>Clavier</b>: ← → ou A / D</li>
+            <li><b>Clavier</b>: ← → / A D et ↑ ↓ / W S</li>
             <li><b>Tactile</b>: toucher gauche/droite ou glisser</li>
           </ul>
           <div class="skins">
@@ -250,17 +250,17 @@
           <div class="upgrade-item">
             <div class="info">
               <h3>Skins premium</h3>
-              <p>Débloque des carrosseries spéciales.</p>
+              <p>Débloque des vaisseaux spéciaux.</p>
             </div>
           </div>
           <div class="upgrade-item">
-            <button type="button" class="primary buy-btn" id="buy_skin_urban_taxi">Débloquer Urban Taxi — <span class="price">50</span> 🪙</button>
-            <button type="button" class="primary buy-btn" id="buy_skin_vaporwave">Débloquer Vaporwave — <span class="price">60</span> 🪙</button>
+            <button type="button" class="primary buy-btn" id="buy_skin_urban_taxi">Débloquer Fantôme — <span class="price">50</span> 🪙</button>
+            <button type="button" class="primary buy-btn" id="buy_skin_vaporwave">Débloquer Cargo — <span class="price">60</span> 🪙</button>
           </div>
           <div class="upgrade-item">
             <div class="info">
               <h3>Traînée</h3>
-              <p>Couleur du sillage de ta voiture.</p>
+              <p>Couleur du sillage de ton vaisseau.</p>
             </div>
             <div>
               <button type="button" class="icon-btn" data-trail="cyan">Cyan</button>
@@ -270,8 +270,8 @@
           </div>
           <div class="upgrade-item">
             <div class="info">
-              <h3>Carrosserie</h3>
-              <p>Forme du châssis.</p>
+              <h3>Coque</h3>
+              <p>Forme de la coque.</p>
             </div>
             <div>
               <button type="button" class="icon-btn" data-body="stock">Stock</button>
@@ -309,8 +309,8 @@
           </div>
           <div class="upgrade-item">
             <div class="info">
-              <h3>Sticker toit</h3>
-              <p>Décalcomanie stylée sur le toit.</p>
+              <h3>Sticker coque</h3>
+              <p>Décalcomanie stylée sur la coque.</p>
             </div>
             <div>
               <button type="button" class="icon-btn" data-sticker="none">Aucun</button>
@@ -320,6 +320,7 @@
           </div>
         </div>
         <div style="margin-top:12px; display:flex; gap:10px; justify-content:center;">
+          <button type="button" id="playFromGarageBtn" class="primary">Jouer</button>
           <button type="button" id="closeGarageBtn" class="icon-btn">Fermer</button>
         </div>
       </div>

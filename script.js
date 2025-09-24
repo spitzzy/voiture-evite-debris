@@ -972,11 +972,16 @@
   function setupGarage() {
     if (garageBtn) garageBtn.addEventListener('click', openGarage);
     if (closeGarageBtn) closeGarageBtn.addEventListener('click', closeGarage);
+    if (playFromGarageBtn) playFromGarageBtn.addEventListener('click', () => { closeGarage(); startGame(); });
     if (buySteeringBtn) buySteeringBtn.addEventListener('click', () => buyUpgrade('steering'));
     if (buyShieldBtn)   buyShieldBtn.addEventListener('click', () => buyUpgrade('shield'));
     if (buyMagnetBtn)   buyMagnetBtn.addEventListener('click', () => buyUpgrade('magnet'));
     if (buyGhostBtn)    buyGhostBtn.addEventListener('click', () => buyUpgrade('ghost'));
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && garageModal && !garageModal.classList.contains('hidden')) closeGarage(); });
+    document.addEventListener('keydown', (e) => {
+      if (!garageModal) return;
+      const isOpen = !garageModal.classList.contains('hidden');
+      if (e.key === 'Escape' && isOpen) { closeGarage(); }
+    });
     loadUpgrades();
 
     // Tabs
@@ -992,9 +997,9 @@
     selectTab('up');
     updateCosmeticsUI();
 
-    // Cosmetics purchases
-    buySkinTaxiBtn?.addEventListener('click', () => buyCosmeticSkin('urban_taxi', 50));
-    buySkinVaporBtn?.addEventListener('click', () => buyCosmeticSkin('vaporwave', 60));
+    // Cosmetics purchases (premium spaceship skins)
+    buySkinTaxiBtn?.addEventListener('click', () => buyCosmeticSkin('phantom', 50));
+    buySkinVaporBtn?.addEventListener('click', () => buyCosmeticSkin('freighter', 60));
     // Trail color
     tabCosmetics?.addEventListener('click', (e) => {
       const b = e.target.closest('[data-trail]');
@@ -1136,6 +1141,7 @@
   const garageBtn = document.getElementById('garageBtn');
   const garageModal = document.getElementById('garageModal');
   const closeGarageBtn = document.getElementById('closeGarageBtn');
+  const playFromGarageBtn = document.getElementById('playFromGarageBtn');
   const buySteeringBtn = document.getElementById('buy_steering');
   const buyShieldBtn = document.getElementById('buy_shield');
   const buyMagnetBtn = document.getElementById('buy_magnet');
@@ -1224,7 +1230,17 @@
     const key = car.modelKey || CAR_MODEL_BY_SKIN[selectedSkin] || 'roadster';
     return CAR_MODELS[key] || CAR_MODELS.roadster;
   }
-  let selectedSkin = localStorage.getItem('car_skin') || 'scout';
+  // --- Ship-named aliases for clarity (keeps backward compat) ---
+  const SHIP_MODELS = CAR_MODELS;
+  const SHIP_MODEL_BY_SKIN = CAR_MODEL_BY_SKIN;
+  function getShipModelParams() { return getCarModelParams(); }
+  // Alias object reference
+  const ship = car;
+  const shipImg = carImg;
+  // Render aliases
+  function drawPlayerShipHullVector(w, h, color) { return drawPlayerCarVector(w, h, color); }
+  function drawShipProjected(x, y, s) { return drawCarProjected(x, y, s); }
+  let selectedSkin = localStorage.getItem('ship_skin') || localStorage.getItem('car_skin') || 'scout';
   function applySkin(key) {
     if (!SKINS[key]) key = 'scout';
     // gate premium skins if not unlocked
@@ -1241,7 +1257,10 @@
       return; // don't switch skin
     }
     selectedSkin = key;
-    localStorage.setItem('car_skin', key);
+    try {
+      localStorage.setItem('ship_skin', key);
+      localStorage.removeItem('car_skin');
+    } catch {}
     carImgLoaded = false;
     carImg.src = SKINS[key].src;
     car.color = SKINS[key].color; // fallback couleur
@@ -3183,6 +3202,10 @@
 
   function startGame() {
     console.debug('[Game] Start button pressed');
+    // If garage is open, close it before starting
+    if (typeof closeGarage === 'function' && garageModal && !garageModal.classList.contains('hidden')) {
+      closeGarage();
+    }
     state.running = true;
     state.gameOver = false;
     state.exploding = false;
@@ -4972,7 +4995,7 @@
   setupGarage();
   // Apply saved skin after cosmetics are loaded
   try {
-    if (!isSkinUnlocked(selectedSkin)) selectedSkin = 'mint';
+    if (!isSkinUnlocked(selectedSkin)) selectedSkin = 'scout';
     applySkin(selectedSkin);
   } catch {}
   // Daily challenges
