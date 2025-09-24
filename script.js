@@ -194,8 +194,14 @@
     ctx.lineTo(w * 0.36, h * 0.30);
     ctx.closePath(); ctx.fill();
     // Cockpit
-    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
     roundRect(ctx, -w * 0.16, -h * 0.18, w * 0.32, h * 0.22, 4 * DPR, ctx.fillStyle);
+    // Hull shading gradient for depth
+    const shade = ctx.createLinearGradient(0, -h * 0.5, 0, h * 0.5);
+    shade.addColorStop(0.0, 'rgba(255,255,255,0.08)');
+    shade.addColorStop(0.5, 'rgba(0,0,0,0)');
+    shade.addColorStop(1.0, 'rgba(0,0,0,0.22)');
+    roundRect(ctx, -w * 0.46, -h * 0.50, w * 0.92, h * 0.96, 6 * DPR, shade);
     // Fins
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath(); ctx.moveTo(-w * 0.36, h * 0.12); ctx.lineTo(-w * 0.52, h * 0.22); ctx.lineTo(-w * 0.28, h * 0.28); ctx.closePath(); ctx.fill();
@@ -206,6 +212,15 @@
     glow.addColorStop(0, 'rgba(0,245,255,0.35)');
     glow.addColorStop(1, 'rgba(0,245,255,0)');
     ctx.fillStyle = glow; ctx.beginPath(); ctx.ellipse(0, h * 0.44, w * 0.35, h * 0.18, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    // Subtle panel lines for NPCs too
+    ctx.save();
+    ctx.globalAlpha = 0.10;
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = Math.max(1, 1 * DPR);
+    const sx = w / 6, sy = h / 9;
+    for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(-sx * i, -h * 0.3); ctx.lineTo(-sx * i, h * 0.34); ctx.stroke(); }
+    for (let j = -2; j <= 2; j++) { ctx.beginPath(); ctx.moveTo(-w * 0.32, sy * j); ctx.lineTo(w * 0.32, sy * j); ctx.stroke(); }
     ctx.restore();
     // Outline neon
     if (isNeonTheme()) {
@@ -228,7 +243,51 @@
     // Base size derived from car but slightly sleeker
     let w = car.w * s * 1.0;
     let h = car.h * s * 0.9;
-    drawGenericShipProjected(x, y, w, h, car.color, s, /*isPlayer*/ true);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(car.tilt || 0);
+    if (carImgLoaded && playerShipCanvas) {
+      // Draw detailed prerendered ship image
+      ctx.drawImage(playerShipCanvas, -w / 2, -h / 2, w, h);
+      // Dynamic cockpit reflection
+      ctx.save();
+      const t = performance.now() / 1000;
+      const refAlpha = 0.10 + 0.08 * Math.sin(t * 2.7);
+      const g = ctx.createLinearGradient(0, -h * 0.30, 0, -h * 0.08);
+      g.addColorStop(0, `rgba(255,255,255,${0.22 + refAlpha})`);
+      g.addColorStop(1, 'rgba(180,220,255,0)');
+      ctx.globalCompositeOperation = 'screen';
+      ctx.fillStyle = g;
+      roundRect(ctx, -w * 0.18, -h * 0.22, w * 0.36, h * 0.20, 6 * DPR, ctx.fillStyle);
+      ctx.restore();
+      // Rim neon light (theme dependent)
+      if (isNeonTheme()) {
+        ctx.save();
+        const pulse = 0.65 + 0.35 * Math.sin(performance.now() / 300);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = `rgba(163,116,255,${0.45 * pulse})`;
+        ctx.lineWidth = Math.max(1, 1.6 * DPR);
+        ctx.strokeRect(-w * 0.46, -h * 0.50, w * 0.92, h * 0.96);
+        ctx.restore();
+      }
+      // Thruster flare
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      const flick = 0.85 + 0.25 * Math.sin(performance.now() / 90 + Math.random() * 0.5);
+      const gg = ctx.createRadialGradient(0, h * 0.44, 2 * DPR, 0, h * 0.44, Math.max(w, 36 * DPR));
+      gg.addColorStop(0, `rgba(0,245,255,${0.35 * flick})`);
+      gg.addColorStop(1, 'rgba(0,245,255,0)');
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.ellipse(0, h * 0.44, w * 0.34, h * 0.16, 0, 0, Math.PI * 2); ctx.fill();
+      // twin nozzles subtle
+      ctx.fillStyle = `rgba(255,220,120,${0.35 * flick})`;
+      ctx.beginPath(); ctx.ellipse(-w * 0.18, h * 0.40, w * 0.10, h * 0.06, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(w * 0.18, h * 0.40, w * 0.10, h * 0.06, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    } else {
+      // Fallback vector if image not yet loaded
+      drawGenericShipProjected(0, 0, w, h, car.color, s, /*isPlayer*/ true);
+    }
+    ctx.restore();
   }
 
   // ---- Bullets (projected) ----
@@ -1209,6 +1268,43 @@
     phantom:     { src: 'assets/ship_phantom.svg',     color: '#a374ff' },
     freighter:   { src: 'assets/ship_freighter.svg',   color: '#ffd166' },
   };
+  // Prerendered player ship for rich details
+  let playerShipCanvas = null;
+  let playerShipCtx = null;
+  function rebuildPlayerShipCanvas() {
+    try {
+      if (!carImgLoaded || !carImg || !carImg.width) return;
+      const baseW = Math.max(160 * DPR, carImg.width);
+      const baseH = Math.max(240 * DPR, carImg.height);
+      if (!playerShipCanvas) playerShipCanvas = document.createElement('canvas');
+      playerShipCanvas.width = baseW;
+      playerShipCanvas.height = baseH;
+      playerShipCtx = playerShipCanvas.getContext('2d');
+      const c = playerShipCtx;
+      c.clearRect(0, 0, baseW, baseH);
+      // Draw base SVG
+      c.drawImage(carImg, 0, 0, baseW, baseH);
+      // Panel lines overlay (subtle)
+      c.save();
+      c.globalAlpha = 0.08;
+      c.strokeStyle = 'rgba(255,255,255,0.28)';
+      c.lineWidth = Math.max(1, 1 * DPR);
+      const stepX = baseW / 8, stepY = baseH / 12;
+      for (let x = stepX; x < baseW; x += stepX) { c.beginPath(); c.moveTo(x, baseH * 0.18); c.lineTo(x, baseH * 0.80); c.stroke(); }
+      for (let y = baseH * 0.18 + stepY; y < baseH * 0.80; y += stepY) { c.beginPath(); c.moveTo(baseW * 0.18, y); c.lineTo(baseW * 0.82, y); c.stroke(); }
+      c.restore();
+      // Specular sweep (baked light)
+      c.save();
+      c.globalCompositeOperation = 'screen';
+      const gx = baseW * 0.5, gy = baseH * 0.36;
+      const rg = c.createRadialGradient(gx, gy, baseW * 0.05, gx, gy, baseW * 0.46);
+      rg.addColorStop(0, 'rgba(255,255,255,0.18)');
+      rg.addColorStop(1, 'rgba(255,255,255,0)');
+      c.fillStyle = rg;
+      c.beginPath(); c.ellipse(gx, gy, baseW * 0.46, baseH * 0.28, -0.12, 0, Math.PI * 2); c.fill();
+      c.restore();
+    } catch {}
+  }
   // Structural models per skin (fallback when car mode)
   const CAR_MODELS = {
     roadster: { wMul: 0.94, hMul: 0.86, roofH: 0.34, wheelYFront: 0.26, wheelYRear: 0.78, spoiler: true, rails: false, grille: false },
@@ -1262,6 +1358,7 @@
       localStorage.removeItem('car_skin');
     } catch {}
     carImgLoaded = false;
+    playerShipCanvas = null;
     carImg.src = SKINS[key].src;
     car.color = SKINS[key].color; // fallback couleur
     car.modelKey = CAR_MODEL_BY_SKIN[key] || 'roadster';
@@ -2680,7 +2777,7 @@
     }
     ctx.restore();
   }
-  carImg.onload = () => { carImgLoaded = true; };
+  carImg.onload = () => { carImgLoaded = true; rebuildPlayerShipCanvas(); };
 
   function updateSkinSelectionUI() {
     const options = document.querySelectorAll('.skin-option');
@@ -3190,6 +3287,8 @@
     // 3D composite buffer matches main canvas size
     tiltCanvas.width = canvas.width;
     tiltCanvas.height = canvas.height;
+    // rebuild prerender with new DPR scaling for crisp details
+    rebuildPlayerShipCanvas();
   }
 
   function roadBounds() {
