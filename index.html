@@ -66,6 +66,8 @@
               </label>
               <button type="button" id="ditherBtn" class="icon-btn" aria-pressed="true" title="Dithering On/Off">💠</button>
               <button type="button" id="reduceFxBtn" class="icon-btn" aria-pressed="false" title="Réduire les effets (mobile)">📱 Réduire effets</button>
+              <button type="button" id="autoPerfBtn" class="icon-btn" aria-pressed="true" title="Auto réglage des effets selon FPS">⚡ Auto Perf</button>
+              <button type="button" id="fpsHudBtn" class="icon-btn" aria-pressed="true" title="Afficher FPS et PerfScale">📈 FPS</button>
             </div>
 
             <div class="settings-group">
@@ -156,6 +158,12 @@
               <button type="button" class="difficulty-option" data-mode="ta" aria-pressed="false">Time Attack 90s</button>
             </div>
           </div>
+          <div class="difficulty">
+            <h2>Mode visuel</h2>
+            <div class="difficulty-grid">
+              <button type="button" class="difficulty-option" id="visualModeMainBtn" aria-pressed="true">Cinématique</button>
+            </div>
+          </div>
           <button type="button" id="startBtn" class="primary">Jouer</button>
         </div>
         <div class="panel hidden" id="gameover">
@@ -212,6 +220,9 @@
         <div style="display:flex; gap:8px; justify-content:center; margin-bottom:10px;">
           <button type="button" class="icon-btn" id="tabUpgradesBtn" aria-pressed="true">Améliorations</button>
           <button type="button" class="icon-btn" id="tabCosmeticsBtn" aria-pressed="false">Cosmétiques</button>
+        </div>
+        <div style="display:flex; gap:8px; justify-content:center; margin-bottom:10px;">
+          <button type="button" id="visualModeGarageBtn" class="icon-btn" aria-pressed="true" title="Mode visuel: Cinématique / Compétitif">🎬 Cinématique</button>
         </div>
         <div id="tab-upgrades" class="upgrade-list">
           <div class="upgrade-item" data-upgrade="steering">

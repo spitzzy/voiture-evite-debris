@@ -7,6 +7,25 @@
     const manifestLink = document.querySelector('link[rel="manifest"]');
     if (manifestLink) manifestLink.remove();
   }
+  function drawPerfHud() {
+    if (!state.fpsHud) return;
+    const txt = `FPS ${Math.round(fpsAvg)}  |  Perf ${(perfScale * 100).toFixed(0)}%`;
+    ctx.save();
+    ctx.font = `${Math.max(10, Math.floor(12 * DPR))}px monospace`;
+    ctx.textBaseline = 'bottom';
+    const pad = 6 * DPR;
+    const metrics = ctx.measureText(txt);
+    const tw = metrics.width;
+    const th = Math.max(14 * DPR, Math.floor(14 * DPR));
+    const x = pad;
+    const y = canvas.height - pad;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(x - pad * 0.5, y - th - pad * 0.5, tw + pad * 1.0, th + pad * 0.8);
+    ctx.fillStyle = fpsAvg < 50 ? '#ffd166' : '#e6e7ff';
+    if (fpsAvg < 42) ctx.fillStyle = '#ff5d6c';
+    ctx.fillText(txt, x, y);
+    ctx.restore();
+  }
 
   // ---- Wet road reflections (when raining) ----
   function drawWetReflections(roadLeft, roadRight, roadTop, roadBottom) {
@@ -39,12 +58,13 @@
         const prevFilter = ctx.filter;
         ctx.globalAlpha = reflectAlpha;
         ctx.filter = 'blur(1.8px)';
-        const sliceH = Math.max(1, Math.floor(2 * DPR));
+        const p = fxScale();
+        const sliceH = Math.max(1, Math.floor(2 * DPR * (p < 1 ? (1 / p) : 1)));
         const bandH = roadBottom - roadTop;
         const t = performance.now() / 1000;
         for (let sy = 0; sy < h; sy += sliceH) {
           const depth = sy / h; // 0 top -> 1 bottom of reflection
-          const amp = (3.2 * DPR) * (1 - depth) * (0.6 + 0.6 * wet);
+          const amp = (3.2 * DPR) * (1 - depth) * (0.6 + 0.6 * wet) * Math.min(1, p + 0.2);
           const speed = 8 + 24 * wet;
           const freq = 0.03 + 0.04 * (1 - depth);
           const offset = Math.sin((sy * freq) + t * speed) * amp;
@@ -152,7 +172,11 @@
     ctx.clip();
     ctx.globalCompositeOperation = 'screen';
     const vm = visMul();
-    for (const s of stars) {
+    // Réduction de charge: saute des étoiles si perfScale < 1
+    const p = state.autoPerf ? perfScale : 1;
+    const step = Math.max(1, Math.round(1 / Math.max(0.65, p)));
+    for (let i = 0; i < stars.length; i += step) {
+      const s = stars[i];
       const t = Math.min(1, ((Math.sin(s.a) * 0.5 + 0.5) * 0.6 + 0.2) * 1.05 * vm);
       ctx.fillStyle = `rgba(${s.hue},${t})`;
       ctx.beginPath();
@@ -829,6 +853,8 @@
     drawExplosionOverlays();
     // Camera lens raindrops overlay (screen-space)
     drawCameraDrops();
+    // Perf HUD
+    drawPerfHud();
   }
 
   // Version projetée 3D
@@ -1413,6 +1439,8 @@
   const pixelSizeEl = document.getElementById('pixelSize');
   const ditherBtn = document.getElementById('ditherBtn');
   const visualModeBtn = document.getElementById('visualModeBtn');
+  const autoPerfBtn = document.getElementById('autoPerfBtn');
+  const fpsHudBtn = document.getElementById('fpsHudBtn');
   const musicVolEl = document.getElementById('musicVol');
   const sfxVolEl = document.getElementById('sfxVol');
   // New HUD refs
@@ -1640,7 +1668,8 @@
       ctx.globalCompositeOperation = 'screen';
       const baseAlpha = isNeonTheme() ? 0.42 : 0.24;
       const bloomMul = state.visualMode === 'cinematic' ? 1.10 : 0.70;
-      ctx.globalAlpha = baseAlpha * (state.ultraNeon ? 1.6 : 1) * bloomMul;
+      const p = state.autoPerf ? perfScale : 1;
+      ctx.globalAlpha = baseAlpha * (state.ultraNeon ? 1.6 : 1) * bloomMul * p;
       ctx.drawImage(bloomCanvas, 0, 0, canvas.width, canvas.height);
       ctx.restore();
     } catch {}
@@ -3165,6 +3194,10 @@
   }
 
   let DPR = Math.min(window.devicePixelRatio || 1, 2);
+  // Auto-Perf (FPS-based scaler)
+  let perfScale = 1.0; // 0.65..1.0
+  let fpsAvg = 60; // EMA du FPS
+  let fpsNowInstant = 60;
 
   const state = {
     running: false,
@@ -3226,6 +3259,8 @@
     carDepth: 0.88, // 3D chase depth position (0=top, 1=bottom)
     // Visual mode: 'cinematic' | 'competitive'
     visualMode: (localStorage.getItem('visual_mode') || 'cinematic'),
+    autoPerf: (localStorage.getItem('auto_perf') !== 'false'),
+    fpsHud: (localStorage.getItem('fps_hud') !== 'false'),
     // Vehicle mode
     vehicle: 'ship', // 'car' | 'ship'
     blasterAmmo: 0,
@@ -3274,7 +3309,45 @@
     try { localStorage.setItem('reduce_fx', String(state.reduceFx)); } catch {}
     if (reduceFxBtn) reduceFxBtn.setAttribute('aria-pressed', String(state.reduceFx));
   }
-  function fxScale() { return state.reduceFx ? 0.6 : 1; }
+  function fxScale() {
+    const base = state.reduceFx ? 0.6 : 1;
+    const p = state.autoPerf ? perfScale : 1;
+    return base * p;
+  }
+  function setAutoPerf(on) {
+    state.autoPerf = !!on;
+    try { localStorage.setItem('auto_perf', String(state.autoPerf)); } catch {}
+    if (autoPerfBtn) autoPerfBtn.setAttribute('aria-pressed', String(state.autoPerf));
+    showToast(`Auto Perf: ${state.autoPerf ? 'ON' : 'OFF'}`);
+  }
+  if (autoPerfBtn) {
+    autoPerfBtn.addEventListener('click', () => setAutoPerf(!state.autoPerf));
+    autoPerfBtn.setAttribute('aria-pressed', String(state.autoPerf));
+  }
+  function setFpsHud(on) {
+    state.fpsHud = !!on;
+    try { localStorage.setItem('fps_hud', String(state.fpsHud)); } catch {}
+    if (fpsHudBtn) fpsHudBtn.setAttribute('aria-pressed', String(state.fpsHud));
+  }
+  if (fpsHudBtn) {
+    fpsHudBtn.addEventListener('click', () => setFpsHud(!state.fpsHud));
+    fpsHudBtn.setAttribute('aria-pressed', String(state.fpsHud));
+  }
+  function updateAutoPerf(fpsNow) {
+    if (!state.autoPerf) return;
+    // EMA douce
+    fpsAvg = fpsAvg * 0.9 + fpsNow * 0.1;
+    // Adaptation par paliers
+    if (fpsAvg < 42) {
+      perfScale = Math.max(0.65, perfScale - 0.06);
+    } else if (fpsAvg < 50) {
+      perfScale = Math.max(0.70, perfScale - 0.03);
+    } else if (fpsAvg > 58) {
+      perfScale = Math.min(1.0, perfScale + 0.02);
+    } else if (fpsAvg > 54) {
+      perfScale = Math.min(1.0, perfScale + 0.01);
+    }
+  }
   // Visual Mode intensity multiplier (for alphas/brightness)
   function visMul() { return state.visualMode === 'cinematic' ? 1.0 : 0.7; }
   function updateVisualModeUI() {
@@ -4886,6 +4959,8 @@
     applyFilmGrain();
     // Camera lens raindrops overlay (screen-space)
     drawCameraDrops();
+    // Perf HUD
+    drawPerfHud();
     drawCRTMask();
     if (scanlinesEnabled) drawScanlines();
     if (vignetteEnabled) drawVignette();
@@ -4898,6 +4973,9 @@
     if (!state.running) return;
     const dt = (now - lastTime) / 1000;
     lastTime = now;
+    // Auto-Perf update
+    const fpsNow = dt > 0 ? (1 / dt) : 60;
+    updateAutoPerf(fpsNow);
     update(dt);
     if (state.running) {
       draw();
