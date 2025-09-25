@@ -17,8 +17,36 @@
     ctx.rect(roadLeft, roadTop, roadRight - roadLeft, roadBottom - roadTop);
     ctx.clip();
     ctx.globalCompositeOperation = 'screen';
-    // broad vertical gradient tint
     const vm = visMul();
+
+    // Mirror 2.0: reflet du ciel (au-dessus de la route) retourné verticalement
+    // Effet doux, flouté et atténué selon intensité de pluie.
+    try {
+      const reflectAlpha = 0.18 * wet * vm; // base 18% modulé par pluie+mode
+      if (reflectAlpha > 0.01) {
+        const prevFilter = ctx.filter;
+        ctx.filter = 'blur(2px)';
+        ctx.globalAlpha = reflectAlpha;
+        // Transformer pour dessiner la zone [0..roadTop] comme reflet
+        ctx.save();
+        ctx.translate(0, roadTop * 2);
+        ctx.scale(1, -1);
+        // Dessine le haut de l'écran (ciel + skyline) reflété dans la route
+        ctx.drawImage(canvas, 0, 0, canvas.width, roadTop, 0, roadTop, canvas.width, roadTop);
+        ctx.restore();
+        ctx.filter = prevFilter;
+        ctx.globalAlpha = 1;
+        // Dégradé d'atténuation vers le bas de la route
+        const fade = ctx.createLinearGradient(0, roadTop, 0, roadBottom);
+        fade.addColorStop(0, 'rgba(255,255,255,0.18)');
+        fade.addColorStop(0.4, 'rgba(255,255,255,0.10)');
+        fade.addColorStop(1, 'rgba(255,255,255,0.0)');
+        ctx.fillStyle = fade;
+        ctx.fillRect(roadLeft, roadTop, roadRight - roadLeft, roadBottom - roadTop);
+      }
+    } catch {}
+
+    // broad vertical gradient tint (glaçage coloré)
     let g = ctx.createLinearGradient(0, roadTop, 0, roadBottom);
     g.addColorStop(0, `rgba(98,209,255,${(0.072 * wet * vm).toFixed(3)})`);
     g.addColorStop(0.5, `rgba(163,116,255,${(0.054 * wet * vm).toFixed(3)})`);
@@ -781,6 +809,8 @@
     // FX explosion overlays
     drawShards(ctx);
     drawExplosionOverlays();
+    // Camera lens raindrops overlay (screen-space)
+    drawCameraDrops();
   }
 
   // Version projetée 3D
@@ -1380,6 +1410,8 @@
   const ultraBtn = document.getElementById('ultraBtn');
   const chromaBtn = document.getElementById('chromaBtn');
   const grainBtn = document.getElementById('grainBtn');
+  const visualModeMainBtn = document.getElementById('visualModeMainBtn');
+  const visualModeGarageBtn = document.getElementById('visualModeGarageBtn');
   // Daily challenges UI
   const challenge1El = document.getElementById('challenge1');
   const challenge2El = document.getElementById('challenge2');
@@ -2788,6 +2820,84 @@
     const vy = Math.sin(angle) * speed;
     return { x: Math.random() * canvas.width, y: -10 * DPR, vx, vy, life: rand(0.6, 1.2) };
   }
+
+  // ---- Camera lens raindrops (post overlay) ----
+  const cameraDrops = [];
+  const cameraSplashes = [];
+  function spawnCameraDrop() {
+    const r = rand(2 * DPR, 6 * DPR);
+    const yStart = rand(0, canvas.height * 0.4);
+    return {
+      x: rand(0, canvas.width),
+      y: yStart,
+      r,
+      vy: rand(18, 48) * (0.7 + 0.6 * rainIntensity) * fxScale(),
+      alpha: rand(0.08, 0.16),
+      wobble: rand(0.2, 0.6),
+      a: rand(0, Math.PI * 2),
+    };
+  }
+  function spawnSplash(x) {
+    const w = rand(20 * DPR, 60 * DPR);
+    const h = rand(4 * DPR, 10 * DPR);
+    cameraSplashes.push({ x, y: canvas.height - 12 * DPR, w, h, alpha: rand(0.08, 0.18), life: rand(0.24, 0.6) });
+  }
+  function updateCameraDrops(dt) {
+    if (!isNeonTheme() || !rainEnabled) {
+      cameraDrops.length = 0; cameraSplashes.length = 0; return;
+    }
+    const spawn = (8 * rainIntensity * fxScale()) | 0;
+    for (let i = 0; i < spawn; i++) cameraDrops.push(spawnCameraDrop());
+    for (let i = cameraDrops.length - 1; i >= 0; i--) {
+      const d = cameraDrops[i];
+      d.a += dt * 4;
+      d.y += (d.vy + Math.sin(d.a) * d.wobble * 10) * dt * DPR;
+      d.x += Math.cos(d.a * 0.6) * d.wobble * 8 * dt * DPR;
+      d.alpha *= 0.999;
+      if (d.y > canvas.height - 14 * DPR) {
+        if (Math.random() < 0.2 + rainIntensity * 0.6) spawnSplash(d.x);
+        cameraDrops.splice(i, 1);
+      }
+    }
+    for (let i = cameraSplashes.length - 1; i >= 0; i--) {
+      const s = cameraSplashes[i];
+      s.life -= dt; s.alpha *= 0.985;
+      if (s.life <= 0 || s.alpha < 0.01) cameraSplashes.splice(i, 1);
+    }
+  }
+  function drawCameraDrops() {
+    if (!isNeonTheme() || !rainEnabled) return;
+    const vm = visMul();
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    // Drops (soft highlights + short streak)
+    for (const d of cameraDrops) {
+      const a = Math.min(1, d.alpha * (0.9 + 0.6 * rainIntensity) * vm);
+      const rg = ctx.createRadialGradient(d.x, d.y, d.r * 0.4, d.x, d.y, d.r * 1.4);
+      rg.addColorStop(0, `rgba(220,235,255,${a})`);
+      rg.addColorStop(1, 'rgba(220,235,255,0)');
+      ctx.fillStyle = rg;
+      ctx.beginPath(); ctx.arc(d.x, d.y, d.r * 1.4, 0, Math.PI * 2); ctx.fill();
+      // subtle vertical smear
+      const sl = d.r * 2.2;
+      const lg = ctx.createLinearGradient(d.x, d.y - sl, d.x, d.y + sl);
+      lg.addColorStop(0, 'rgba(220,235,255,0)');
+      lg.addColorStop(0.5, `rgba(220,235,255,${a * 0.45})`);
+      lg.addColorStop(1, 'rgba(220,235,255,0)');
+      ctx.fillStyle = lg;
+      ctx.fillRect(d.x - 1 * DPR, d.y - sl, 2 * DPR, sl * 2);
+    }
+    // Splashes near bottom
+    for (const s of cameraSplashes) {
+      const ga = Math.min(1, s.alpha * vm);
+      const g = ctx.createRadialGradient(s.x, s.y, 1, s.x, s.y, Math.max(s.w, s.h));
+      g.addColorStop(0, `rgba(220,235,255,${ga})`);
+      g.addColorStop(1, 'rgba(220,235,255,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.ellipse(s.x, s.y, s.w, s.h, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
   
   // PostFX: scanlines & vignette
   function drawScanlines() {
@@ -3151,6 +3261,14 @@
     const isCine = state.visualMode === 'cinematic';
     visualModeBtn.textContent = isCine ? '🎬 Cinématique' : '🏁 Compétitif';
     visualModeBtn.setAttribute('aria-pressed', String(isCine));
+    if (visualModeMainBtn) {
+      visualModeMainBtn.textContent = isCine ? 'Cinématique' : 'Compétitif';
+      visualModeMainBtn.setAttribute('aria-pressed', String(isCine));
+    }
+    if (visualModeGarageBtn) {
+      visualModeGarageBtn.textContent = isCine ? '🎬 Cinématique' : '🏁 Compétitif';
+      visualModeGarageBtn.setAttribute('aria-pressed', String(isCine));
+    }
   }
   function setVisualMode(mode) {
     state.visualMode = (mode === 'competitive') ? 'competitive' : 'cinematic';
@@ -3161,6 +3279,18 @@
   updateVisualModeUI();
   if (visualModeBtn) {
     visualModeBtn.addEventListener('click', () => {
+      const next = state.visualMode === 'cinematic' ? 'competitive' : 'cinematic';
+      setVisualMode(next);
+    });
+  }
+  if (visualModeMainBtn) {
+    visualModeMainBtn.addEventListener('click', () => {
+      const next = state.visualMode === 'cinematic' ? 'competitive' : 'cinematic';
+      setVisualMode(next);
+    });
+  }
+  if (visualModeGarageBtn) {
+    visualModeGarageBtn.addEventListener('click', () => {
       const next = state.visualMode === 'cinematic' ? 'competitive' : 'cinematic';
       setVisualMode(next);
     });
@@ -3694,6 +3824,7 @@
       world.lineOffset = (world.lineOffset + slow * dt) % 60;
       updateCyberpunkBackground(dt);
       updateRain(dt);
+      updateCameraDrops(dt);
       return;
     }
 
@@ -3746,6 +3877,7 @@
     world.lineOffset = (world.lineOffset + speed * dt * state.timeScale) % 60;
     updateCyberpunkBackground(dt * state.timeScale);
     updateRain(dt * state.timeScale);
+    updateCameraDrops(dt * state.timeScale);
     // fog bands move with time and depend on road bounds
     {
       const { top: roadTop, bottom: roadBottom } = roadBounds();
@@ -4731,6 +4863,8 @@
     applyRetroPixelate();
     applyChromaticAberration();
     applyFilmGrain();
+    // Camera lens raindrops overlay (screen-space)
+    drawCameraDrops();
     drawCRTMask();
     if (scanlinesEnabled) drawScanlines();
     if (vignetteEnabled) drawVignette();
@@ -5364,6 +5498,10 @@
     if (e.key === 'p' || e.key === 'P') togglePause();
     if (e.key === 'm' || e.key === 'M') setMuted(!state.muted);
     if (e.key === 't' || e.key === 'T') { state.sectionTime = state.sectionDuration; }
+    if (e.key === 'v' || e.key === 'V') {
+      const next = state.visualMode === 'cinematic' ? 'competitive' : 'cinematic';
+      setVisualMode(next);
+    }
   });
 
   // ---- Effets néon pour le thème "Nuit néon" ----
