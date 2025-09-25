@@ -2276,6 +2276,37 @@
   }
 
   function drawPalmProjected(p, x, y, s) {
+    if (isNeonTheme()) {
+      // Holo totem (cyberpunk)
+      const w = (p.w || 24 * DPR) * s;
+      const h = (p.h || 120 * DPR) * s;
+      const left = x - w / 2;
+      const top = y - h / 2;
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      // Core pillar
+      const g = ctx.createLinearGradient(0, top, 0, top + h);
+      g.addColorStop(0, 'rgba(163,116,255,0.0)');
+      g.addColorStop(0.5, 'rgba(98,209,255,0.35)');
+      g.addColorStop(1, 'rgba(255,122,200,0.0)');
+      ctx.fillStyle = g;
+      roundRect(ctx, left + w * 0.35, top, w * 0.30, h, 8 * DPR * s, ctx.fillStyle);
+      // Scanning band
+      const t = performance.now() / 1000;
+      const bandY = top + ((t * 60) % h);
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = 'rgba(180,220,255,0.45)';
+      ctx.fillRect(left + w * 0.32, bandY, w * 0.36, 3 * DPR * s);
+      ctx.globalAlpha = 1;
+      // Top halo
+      const rg = ctx.createRadialGradient(x, top, 2 * DPR, x, top, 36 * DPR * s);
+      rg.addColorStop(0, 'rgba(180,200,255,0.35)');
+      rg.addColorStop(1, 'rgba(180,200,255,0)');
+      ctx.fillStyle = rg;
+      ctx.beginPath(); ctx.arc(x, top, 36 * DPR * s, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      return;
+    }
     const pal = getSectionPalette();
     const w = (p.w || 24 * DPR) * s;
     const h = (p.h || 120 * DPR) * s;
@@ -2308,6 +2339,39 @@
   }
 
   function drawSignProjected(sg, x, y, s) {
+    if (isNeonTheme()) {
+      const w = (sg.w || 70 * DPR) * s;
+      const h = (sg.h || 26 * DPR) * s * 1.6;
+      const poleH = (sg.poleH || 16 * DPR) * s;
+      const left = x - w / 2;
+      const top = y - h / 2;
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      // Neon billboard body
+      roundRect(ctx, left, top + poleH, w, h, 6 * DPR * s, 'rgba(14,14,24,0.6)');
+      // Glow edges
+      const edge = ctx.createLinearGradient(left, top, left + w, top + h);
+      edge.addColorStop(0, 'rgba(163,116,255,0.40)');
+      edge.addColorStop(1, 'rgba(98,209,255,0.40)');
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1, 2 * DPR * s);
+      ctx.strokeRect(left, top + poleH, w, h);
+      // Glitch scanlines
+      const t = performance.now() / 250;
+      ctx.globalAlpha = 0.12;
+      ctx.fillStyle = 'rgba(180,220,255,0.8)';
+      for (let yy = top + poleH + (t % 4) * DPR; yy < top + poleH + h; yy += 4 * DPR) {
+        ctx.fillRect(left + 3 * DPR * s, yy, w - 6 * DPR * s, 1 * DPR);
+      }
+      ctx.globalAlpha = 1;
+      // Holo text
+      ctx.fillStyle = sg.color || '#e6e7ff';
+      ctx.font = `${Math.max(8, Math.floor(12 * DPR * s))}px monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(sg.txt || 'CYBER', left + w / 2, top + poleH + h / 2);
+      ctx.restore();
+      return;
+    }
     const w = (sg.w || 70 * DPR) * s;
     const h = (sg.h || 26 * DPR) * s;
     const poleH = (sg.poleH || 16 * DPR) * s;
@@ -2335,6 +2399,29 @@
   }
 
   function drawRockProjected(rk, x, y, s) {
+    if (isNeonTheme()) {
+      const w = (rk.w || 24 * DPR) * s;
+      const h = (rk.h || 14 * DPR) * s;
+      const r = (rk.r || 6 * DPR) * s;
+      const left = x - w / 2;
+      const top = y - h / 2;
+      // Tech crate with neon rim
+      ctx.save();
+      roundRect(ctx, left, top, w, h, r, 'rgba(18,18,32,0.95)');
+      ctx.globalCompositeOperation = 'screen';
+      ctx.strokeStyle = 'rgba(163,116,255,0.5)';
+      ctx.lineWidth = Math.max(1, 2 * DPR * s);
+      ctx.strokeRect(left + 1 * DPR * s, top + 1 * DPR * s, w - 2 * DPR * s, h - 2 * DPR * s);
+      // Corner nodes
+      ctx.fillStyle = 'rgba(98,209,255,0.55)';
+      const r2 = Math.max(1, 1.5 * DPR * s);
+      ctx.beginPath(); ctx.arc(left + r, top + r, r2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(left + w - r, top + r, r2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(left + r, top + h - r, r2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(left + w - r, top + h - r, r2, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      return;
+    }
     const w = (rk.w || 24 * DPR) * s;
     const h = (rk.h || 14 * DPR) * s;
     const r = (rk.r || 6 * DPR) * s;
@@ -2365,6 +2452,22 @@
     return { x, y, w: baseW, h: baseH, vy, side, petal, stem: '#3aa065' };
   }
   function drawFlower(fl) {
+    if (isNeonTheme()) {
+      const cx = fl.x + fl.w * 0.5;
+      const cy = fl.y + fl.h * 0.3;
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      const hueA = randChoice(['163,116,255','98,209,255','255,122,200']);
+      for (let i = 0; i < 8; i++) {
+        const ox = rand(-fl.w * 0.6, fl.w * 0.6);
+        const oy = rand(-fl.h * 0.3, fl.h * 0.2);
+        const r = rand(1.0 * DPR, 2.4 * DPR);
+        ctx.fillStyle = `rgba(${hueA},${rand(0.25,0.6)})`;
+        ctx.beginPath(); ctx.arc(cx + ox, cy + oy, r, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+      return;
+    }
     const cx = fl.x + fl.w * 0.5;
     const cy = fl.y + fl.h * 0.6;
     // tige
@@ -2390,6 +2493,24 @@
     ctx.restore();
   }
   function drawFlowerProjected(fl, x, y, s) {
+    if (isNeonTheme()) {
+      // Neon shrub cluster
+      const w = (fl.w || 8 * DPR) * s;
+      const h = (fl.h || 14 * DPR) * s;
+      const cx = x; const cy = y - h * 0.4;
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      const hueA = randChoice(['163,116,255','98,209,255','255,122,200']);
+      for (let i = 0; i < 10; i++) {
+        const ox = rand(-w * 0.6, w * 0.6);
+        const oy = rand(-h * 0.3, h * 0.2);
+        const r = rand(1.0 * DPR * s, 2.2 * DPR * s);
+        ctx.fillStyle = `rgba(${hueA},${rand(0.25,0.6)})`;
+        ctx.beginPath(); ctx.arc(cx + ox, cy + oy, r, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+      return;
+    }
     const w = (fl.w || 8 * DPR) * s;
     const h = (fl.h || 14 * DPR) * s;
     const cx = x;
@@ -2429,6 +2550,24 @@
     return { x, y, w, h, vy, side, light: pal.rockLight, dark: pal.rockDark, r: 6 * DPR };
   }
   function drawRock(rk) {
+    if (isNeonTheme()) {
+      ctx.save();
+      // Tech crate with neon rim (2D)
+      roundRect(ctx, rk.x, rk.y, rk.w, rk.h, rk.r, 'rgba(18,18,32,0.95)');
+      ctx.globalCompositeOperation = 'screen';
+      ctx.strokeStyle = 'rgba(163,116,255,0.5)';
+      ctx.lineWidth = Math.max(1, 2 * DPR);
+      ctx.strokeRect(rk.x + 1 * DPR, rk.y + 1 * DPR, rk.w - 2 * DPR, rk.h - 2 * DPR);
+      // Corner nodes
+      ctx.fillStyle = 'rgba(98,209,255,0.55)';
+      const r2 = Math.max(1, 1.5 * DPR);
+      ctx.beginPath(); ctx.arc(rk.x + rk.r, rk.y + rk.r, r2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(rk.x + rk.w - rk.r, rk.y + rk.r, r2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(rk.x + rk.r, rk.y + rk.h - rk.r, r2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(rk.x + rk.w - rk.r, rk.y + rk.h - rk.r, r2, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      return;
+    }
     ctx.save();
     // base dark shape
     roundRect(ctx, rk.x, rk.y, rk.w, rk.h, rk.r, rk.dark);
@@ -3049,6 +3188,31 @@
     return { x, y, w: baseW, h: baseH, trunkW, trunkH, side, vy, swaySpeed, swayAmp, phase: Math.random() * Math.PI * 2 };
   }
   function drawPalm(p) {
+    if (isNeonTheme()) {
+      // Holo totem (2D)
+      const w = p.w, h = p.h;
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      const g = ctx.createLinearGradient(0, p.y, 0, p.y + h);
+      g.addColorStop(0, 'rgba(163,116,255,0.0)');
+      g.addColorStop(0.5, 'rgba(98,209,255,0.35)');
+      g.addColorStop(1, 'rgba(255,122,200,0.0)');
+      ctx.fillStyle = g;
+      roundRect(ctx, p.x + w * 0.35, p.y, w * 0.30, h, 8 * DPR, ctx.fillStyle);
+      const t = performance.now() / 1000;
+      const bandY = p.y + ((t * 60) % h);
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = 'rgba(180,220,255,0.45)';
+      ctx.fillRect(p.x + w * 0.32, bandY, w * 0.36, 3 * DPR);
+      ctx.globalAlpha = 1;
+      const rg = ctx.createRadialGradient(p.x + w * 0.5, p.y, 2 * DPR, p.x + w * 0.5, p.y, 36 * DPR);
+      rg.addColorStop(0, 'rgba(180,200,255,0.35)');
+      rg.addColorStop(1, 'rgba(180,200,255,0)');
+      ctx.fillStyle = rg;
+      ctx.beginPath(); ctx.arc(p.x + w * 0.5, p.y, 36 * DPR, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      return;
+    }
     // trunk
     const sway = Math.sin(p.phase) * p.swayAmp;
     const tx = p.x + (p.side === 'left' ? sway * 0.5 : -sway * 0.5);
@@ -3129,7 +3293,7 @@
     const vy = Math.max(60, world.baseSpeed * 0.95);
     const palette = ['#a374ff', '#4ad2ff', '#ffd166', '#ff7bf3', '#e6e7ff'];
     const color = palette[(Math.random() * palette.length) | 0];
-    const texts = ['MOTEL', 'PALMS', 'CAFE', 'CITY', 'GAS'];
+    const texts = isNeonTheme() ? ['CYBER', 'NOIR', 'NEON', 'BLADE', 'CITY'] : ['MOTEL', 'PALMS', 'CAFE', 'CITY', 'GAS'];
     const txt = texts[(Math.random() * texts.length) | 0];
     const margin = 12 * DPR;
     const x = side === 'left' ? (roadLeft - margin - w) : (roadRight + margin);
@@ -3137,6 +3301,31 @@
   }
 
   function drawSign(s) {
+    if (isNeonTheme()) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      roundRect(ctx, s.x, s.y + s.poleH, s.w, s.h * 1.6, 6 * DPR, 'rgba(14,14,24,0.6)');
+      const edge = ctx.createLinearGradient(s.x, s.y, s.x + s.w, s.y + s.h);
+      edge.addColorStop(0, 'rgba(163,116,255,0.40)');
+      edge.addColorStop(1, 'rgba(98,209,255,0.40)');
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1, 2 * DPR);
+      ctx.strokeRect(s.x, s.y + s.poleH, s.w, s.h * 1.6);
+      // scanlines
+      const t = performance.now() / 250;
+      ctx.globalAlpha = 0.12;
+      ctx.fillStyle = 'rgba(180,220,255,0.8)';
+      for (let yy = s.y + s.poleH + (t % 4) * DPR; yy < s.y + s.poleH + s.h * 1.6; yy += 4 * DPR) {
+        ctx.fillRect(s.x + 3 * DPR, yy, s.w - 6 * DPR, 1 * DPR);
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = s.color || '#e6e7ff';
+      ctx.font = `${Math.floor(12 * DPR)}px monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(s.txt || 'CYBER', s.x + s.w / 2, s.y + s.poleH + (s.h * 0.8));
+      ctx.restore();
+      return;
+    }
     ctx.save();
     // pole
     ctx.fillStyle = '#4b4b56';
