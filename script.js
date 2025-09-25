@@ -19,9 +19,9 @@
     ctx.globalCompositeOperation = 'screen';
     // broad vertical gradient tint
     let g = ctx.createLinearGradient(0, roadTop, 0, roadBottom);
-    g.addColorStop(0, `rgba(98,209,255,${0.06 * wet})`);
-    g.addColorStop(0.5, `rgba(163,116,255,${0.045 * wet})`);
-    g.addColorStop(1, `rgba(255,122,200,${0.02 * wet})`);
+    g.addColorStop(0, `rgba(98,209,255,${0.072 * wet})`);
+    g.addColorStop(0.5, `rgba(163,116,255,${0.054 * wet})`);
+    g.addColorStop(1, `rgba(255,122,200,${0.024 * wet})`);
     ctx.fillStyle = g;
     ctx.fillRect(roadLeft, roadTop, roadRight - roadLeft, roadBottom - roadTop);
     // moving reflection streaks
@@ -30,7 +30,7 @@
       const y = roadTop + ((i / count) * (roadBottom - roadTop) + (world.lineOffset * 0.8)) % (roadBottom - roadTop);
       const gg = ctx.createLinearGradient(roadLeft, y - 6 * DPR, roadLeft, y + 6 * DPR);
       gg.addColorStop(0, 'rgba(255,255,255,0)');
-      gg.addColorStop(0.5, `rgba(200,220,255,${0.06 * wet})`);
+      gg.addColorStop(0.5, `rgba(200,220,255,${0.072 * wet})`);
       gg.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = gg;
       ctx.fillRect(roadLeft, y - 6 * DPR, roadRight - roadLeft, 12 * DPR);
@@ -48,7 +48,7 @@
       fogTimer = 0;
       const y = rand(roadTop - 60 * DPR, roadBottom + 40 * DPR);
       const speed = rand(12, 28) * (0.7 + 0.6 * Math.random());
-      const alpha = rand(0.08, 0.16) * (state.ultraNeon ? 1.2 : 1.0);
+      const alpha = rand(0.08, 0.16) * (state.ultraNeon ? 1.2 : 1.0) * 1.10;
       const height = rand(40 * DPR, 110 * DPR);
       fogBands.push({ y, speed, alpha, height });
     }
@@ -81,7 +81,7 @@
   function initStars() {
     stars = [];
     if (!isNeonTheme()) return;
-    const count = Math.floor(Math.min(140, canvas.width * canvas.height / (9000 * DPR)));
+    const count = Math.floor(Math.min(160, (canvas.width * canvas.height) / (9000 * DPR) * 1.10));
     for (let i = 0; i < count; i++) {
       stars.push({
         x: Math.random() * canvas.width,
@@ -105,7 +105,7 @@
     ctx.clip();
     ctx.globalCompositeOperation = 'screen';
     for (const s of stars) {
-      const t = (Math.sin(s.a) * 0.5 + 0.5) * 0.6 + 0.2;
+      const t = Math.min(1, ((Math.sin(s.a) * 0.5 + 0.5) * 0.6 + 0.2) * 1.05);
       ctx.fillStyle = `rgba(${s.hue},${t})`;
       ctx.beginPath();
       ctx.arc(s.x, s.y, Math.max(0.6 * DPR, s.size), 0, Math.PI * 2);
@@ -127,14 +127,14 @@
       // left pillar
       let g1 = ctx.createLinearGradient(0, y - 18 * DPR, 0, y + 18 * DPR);
       g1.addColorStop(0, 'rgba(163,116,255,0)');
-      g1.addColorStop(0.5, 'rgba(163,116,255,0.5)');
+      g1.addColorStop(0.5, 'rgba(163,116,255,0.55)');
       g1.addColorStop(1, 'rgba(163,116,255,0)');
       ctx.fillStyle = g1;
       ctx.fillRect(roadLeft - 10 * DPR, y - 18 * DPR, width, 36 * DPR);
       // right pillar
       let g2 = ctx.createLinearGradient(0, y - 18 * DPR, 0, y + 18 * DPR);
       g2.addColorStop(0, 'rgba(98,209,255,0)');
-      g2.addColorStop(0.5, 'rgba(98,209,255,0.5)');
+      g2.addColorStop(0.5, 'rgba(98,209,255,0.55)');
       g2.addColorStop(1, 'rgba(98,209,255,0)');
       ctx.fillStyle = g2;
       ctx.fillRect(roadRight + 6 * DPR, y - 18 * DPR, width, 36 * DPR);
@@ -267,9 +267,9 @@
       const len = Math.max(220 * DPR, roadTop * 0.9);
       const dx = Math.sin(s.angle) * len * s.range;
       const dy = -Math.cos(s.angle) * len * 0.9;
-      const w = Math.max(28 * DPR, 46 * DPR * (1 + 0.2 * Math.sin(performance.now()/600)));
+      const w = Math.max(28 * DPR, (46 * 1.15) * DPR * (1 + 0.2 * Math.sin(performance.now()/600)));
       const g = ctx.createLinearGradient(x, y, x + dx, y + dy);
-      g.addColorStop(0, `rgba(${s.hue},0.35)`);
+      g.addColorStop(0, `rgba(${s.hue},0.40)`);
       g.addColorStop(1, `rgba(${s.hue},0.0)`);
       ctx.fillStyle = g;
       ctx.beginPath();
@@ -410,7 +410,7 @@
     if (isNeonTheme()) {
       ctx.save();
       const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 240);
-      ctx.strokeStyle = `rgba(163,116,255,${0.55 * pulse})`;
+      ctx.strokeStyle = `rgba(163,116,255,${0.60 * pulse})`;
       ctx.lineWidth = Math.max(1, 1.8 * DPR);
       ctx.beginPath();
       ctx.moveTo(0, -h * 0.5);
@@ -449,7 +449,7 @@
         ctx.save();
         const pulse = 0.65 + 0.35 * Math.sin(performance.now() / 300);
         ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = `rgba(163,116,255,${0.45 * pulse})`;
+        ctx.strokeStyle = `rgba(163,116,255,${0.50 * pulse})`;
         ctx.lineWidth = Math.max(1, 1.6 * DPR);
         ctx.strokeRect(-w * 0.46, -h * 0.50, w * 0.92, h * 0.96);
         ctx.restore();
@@ -1584,7 +1584,7 @@
       bloomCtx.restore();
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
-      const baseAlpha = isNeonTheme() ? 0.38 : 0.22;
+      const baseAlpha = isNeonTheme() ? 0.42 : 0.24;
       ctx.globalAlpha = baseAlpha * (state.ultraNeon ? 1.6 : 1);
       ctx.drawImage(bloomCanvas, 0, 0, canvas.width, canvas.height);
       ctx.restore();
@@ -2626,12 +2626,12 @@
     ctx.globalCompositeOperation = 'screen';
     const glow = ctx.createLinearGradient(roadLeft - 10 * DPR, 0, roadLeft, 0);
     glow.addColorStop(0, 'rgba(116,196,255,0)');
-    glow.addColorStop(1, 'rgba(116,196,255,0.45)');
+    glow.addColorStop(1, 'rgba(116,196,255,0.50)');
     ctx.fillStyle = glow;
     ctx.fillRect(roadLeft - 10 * DPR, roadTop, 10 * DPR, roadBottom - roadTop);
 
     const glow2 = ctx.createLinearGradient(roadRight, 0, roadRight + 10 * DPR, 0);
-    glow2.addColorStop(0, 'rgba(116,196,255,0.45)');
+    glow2.addColorStop(0, 'rgba(116,196,255,0.50)');
     glow2.addColorStop(1, 'rgba(116,196,255,0)');
     ctx.fillStyle = glow2;
     ctx.fillRect(roadRight, roadTop, 10 * DPR, roadBottom - roadTop);
@@ -2649,7 +2649,7 @@
     for (let y = roadTop + offset; y < roadBottom; y += gap) {
       const g = ctx.createLinearGradient(roadLeft, y, roadRight, y);
       g.addColorStop(0, 'rgba(163,116,255,0.0)');
-      g.addColorStop(0.5, 'rgba(163,116,255,0.22)');
+      g.addColorStop(0.5, 'rgba(163,116,255,0.24)');
       g.addColorStop(1, 'rgba(163,116,255,0.0)');
       ctx.fillStyle = g;
       ctx.fillRect(roadLeft, y, roadRight - roadLeft, stripH);
