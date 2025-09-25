@@ -8,6 +8,140 @@
     if (manifestLink) manifestLink.remove();
   }
 
+  // ---- Wet road reflections (when raining) ----
+  function drawWetReflections(roadLeft, roadRight, roadTop, roadBottom) {
+    if (!isNeonTheme() || !rainEnabled || rainIntensity <= 0.2) return;
+    const wet = Math.min(1, 0.4 + rainIntensity * 0.8);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(roadLeft, roadTop, roadRight - roadLeft, roadBottom - roadTop);
+    ctx.clip();
+    ctx.globalCompositeOperation = 'screen';
+    // broad vertical gradient tint
+    let g = ctx.createLinearGradient(0, roadTop, 0, roadBottom);
+    g.addColorStop(0, `rgba(98,209,255,${0.06 * wet})`);
+    g.addColorStop(0.5, `rgba(163,116,255,${0.045 * wet})`);
+    g.addColorStop(1, `rgba(255,122,200,${0.02 * wet})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(roadLeft, roadTop, roadRight - roadLeft, roadBottom - roadTop);
+    // moving reflection streaks
+    const count = 9;
+    for (let i = 0; i < count; i++) {
+      const y = roadTop + ((i / count) * (roadBottom - roadTop) + (world.lineOffset * 0.8)) % (roadBottom - roadTop);
+      const gg = ctx.createLinearGradient(roadLeft, y - 6 * DPR, roadLeft, y + 6 * DPR);
+      gg.addColorStop(0, 'rgba(255,255,255,0)');
+      gg.addColorStop(0.5, `rgba(200,220,255,${0.06 * wet})`);
+      gg.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = gg;
+      ctx.fillRect(roadLeft, y - 6 * DPR, roadRight - roadLeft, 12 * DPR);
+    }
+    ctx.restore();
+  }
+  // ---- Volumetric fog bands over road ----
+  const fogBands = [];
+  let fogTimer = 0;
+  function updateFogBands(dt, roadTop, roadBottom) {
+    if (!isNeonTheme()) return;
+    fogTimer += dt;
+    const want = 3;
+    if (fogBands.length < want && fogTimer > 1.2) {
+      fogTimer = 0;
+      const y = rand(roadTop - 60 * DPR, roadBottom + 40 * DPR);
+      const speed = rand(12, 28) * (0.7 + 0.6 * Math.random());
+      const alpha = rand(0.08, 0.16) * (state.ultraNeon ? 1.2 : 1.0);
+      const height = rand(40 * DPR, 110 * DPR);
+      fogBands.push({ y, speed, alpha, height });
+    }
+    for (let i = fogBands.length - 1; i >= 0; i--) {
+      const f = fogBands[i];
+      f.y += f.speed * dt;
+      if (f.y - f.height > roadBottom + 140 * DPR) fogBands.splice(i,1);
+    }
+  }
+  function drawFogBands(roadLeft, roadRight, roadTop, roadBottom) {
+    if (!isNeonTheme() || !fogBands.length) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(roadLeft, roadTop, roadRight - roadLeft, roadBottom - roadTop);
+    ctx.clip();
+    ctx.globalCompositeOperation = 'screen';
+    for (const f of fogBands) {
+      const g = ctx.createLinearGradient(0, f.y - f.height, 0, f.y + f.height);
+      g.addColorStop(0, 'rgba(200,220,255,0)');
+      g.addColorStop(0.5, `rgba(180,200,255,${f.alpha})`);
+      g.addColorStop(1, 'rgba(200,220,255,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(roadLeft, f.y - f.height, roadRight - roadLeft, f.height * 2);
+    }
+    ctx.restore();
+  }
+
+  // ---- Starfield (twinkling) ----
+  let stars = [];
+  function initStars() {
+    stars = [];
+    if (!isNeonTheme()) return;
+    const count = Math.floor(Math.min(140, canvas.width * canvas.height / (9000 * DPR)));
+    for (let i = 0; i < count; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * Math.max(40 * DPR, canvas.height * 0.25),
+        a: Math.random() * Math.PI * 2,
+        speed: 0.6 + Math.random() * 1.4,
+        size: Math.random() * 1.6 * DPR,
+        hue: Math.random() < 0.5 ? '180,200,255' : '255,200,255'
+      });
+    }
+  }
+  function updateStars(dt) {
+    if (!isNeonTheme()) return;
+    for (const s of stars) { s.a += dt * s.speed; }
+  }
+  function drawStars(roadTop) {
+    if (!isNeonTheme() || !stars.length) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, canvas.width, roadTop);
+    ctx.clip();
+    ctx.globalCompositeOperation = 'screen';
+    for (const s of stars) {
+      const t = (Math.sin(s.a) * 0.5 + 0.5) * 0.6 + 0.2;
+      ctx.fillStyle = `rgba(${s.hue},${t})`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, Math.max(0.6 * DPR, s.size), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ---- Neon pillars along road edges ----
+  function drawNeonPillars(roadLeft, roadRight, roadTop, roadBottom) {
+    if (!isNeonTheme()) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const spacing = 140 * DPR;
+    const width = 4 * DPR; // pillar width
+    const offset = (world.lineOffset * 1.8) % spacing;
+    const startY = roadTop - offset;
+    for (let y = startY; y < roadBottom + spacing; y += spacing) {
+      // left pillar
+      let g1 = ctx.createLinearGradient(0, y - 18 * DPR, 0, y + 18 * DPR);
+      g1.addColorStop(0, 'rgba(163,116,255,0)');
+      g1.addColorStop(0.5, 'rgba(163,116,255,0.5)');
+      g1.addColorStop(1, 'rgba(163,116,255,0)');
+      ctx.fillStyle = g1;
+      ctx.fillRect(roadLeft - 10 * DPR, y - 18 * DPR, width, 36 * DPR);
+      // right pillar
+      let g2 = ctx.createLinearGradient(0, y - 18 * DPR, 0, y + 18 * DPR);
+      g2.addColorStop(0, 'rgba(98,209,255,0)');
+      g2.addColorStop(0.5, 'rgba(98,209,255,0.5)');
+      g2.addColorStop(1, 'rgba(98,209,255,0)');
+      ctx.fillStyle = g2;
+      ctx.fillRect(roadRight + 6 * DPR, y - 18 * DPR, width, 36 * DPR);
+    }
+    ctx.restore();
+  }
+
   // Muzzle flash court lors du tir
   function spawnMuzzleFlash(cx, cy) {
     const colors = ['#ffe29a', '#ffd166', '#ffffff'];
@@ -95,6 +229,56 @@
       ctx.fillRect(-1.5 * DPR, -s.len * 0.5, 3 * DPR, s.len);
       ctx.rotate(-s.rot);
       ctx.translate(-s.x, -s.y);
+    }
+    ctx.restore();
+  }
+
+  // ---- Sky searchlights (neon theme) ----
+  const searchlights = [];
+  function initSearchlights() {
+    searchlights.length = 0;
+    if (!isNeonTheme()) return;
+    const count = 3;
+    for (let i = 0; i < count; i++) {
+      const baseX = rand(40 * DPR, canvas.width - 40 * DPR);
+      const speed = rand(0.15, 0.28);
+      const range = rand(0.6, 1.0);
+      const hue = randChoice(['163,116,255','98,209,255','255,122,200']);
+      searchlights.push({ baseX, angle: rand(-0.6, 0.6), speed, range, hue });
+    }
+  }
+  function updateSearchlights(dt) {
+    if (!isNeonTheme()) return;
+    for (const s of searchlights) {
+      s.angle += s.speed * dt * (Math.random() < 0.5 ? -1 : 1);
+      s.angle = clamp(s.angle, -0.9, 0.9);
+    }
+  }
+  function drawSearchlights(roadTop) {
+    if (!isNeonTheme() || !searchlights.length) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, canvas.width, roadTop);
+    ctx.clip();
+    ctx.globalCompositeOperation = 'screen';
+    for (const s of searchlights) {
+      const x = s.baseX;
+      const y = roadTop + 6 * DPR; // just below sky band
+      const len = Math.max(220 * DPR, roadTop * 0.9);
+      const dx = Math.sin(s.angle) * len * s.range;
+      const dy = -Math.cos(s.angle) * len * 0.9;
+      const w = Math.max(28 * DPR, 46 * DPR * (1 + 0.2 * Math.sin(performance.now()/600)));
+      const g = ctx.createLinearGradient(x, y, x + dx, y + dy);
+      g.addColorStop(0, `rgba(${s.hue},0.35)`);
+      g.addColorStop(1, `rgba(${s.hue},0.0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(x - w * 0.5, y);
+      ctx.lineTo(x + w * 0.5, y);
+      ctx.lineTo(x + dx + w * 0.15, y + dy);
+      ctx.lineTo(x + dx - w * 0.15, y + dy);
+      ctx.closePath();
+      ctx.fill();
     }
     ctx.restore();
   }
@@ -2483,6 +2667,8 @@
     // Two layers: far and near
     cityLayers.push(makeSkylineLayer(w, band, 0.18, '#220a4a', '#8b55ff'));
     cityLayers.push(makeSkylineLayer(w, band, 0.28, '#0e0840', '#62d1ff'));
+    initSearchlights();
+    initStars();
   }
   function makeSkylineLayer(width, height, speedFactor, baseColor, glowColor) {
     const buildings = [];
@@ -2500,6 +2686,8 @@
     for (const layer of cityLayers) {
       layer.y = (layer.y + layer.speed * dt) % (layer.height + 12 * DPR);
     }
+    updateSearchlights(dt);
+    updateStars(dt);
   }
   function drawCyberpunkBackground(roadTop) {
     if (!isNeonTheme()) return;
@@ -3528,6 +3716,11 @@
     world.lineOffset = (world.lineOffset + speed * dt * state.timeScale) % 60;
     updateCyberpunkBackground(dt * state.timeScale);
     updateRain(dt * state.timeScale);
+    // fog bands move with time and depend on road bounds
+    {
+      const { top: roadTop, bottom: roadBottom } = roadBounds();
+      updateFogBands(dt * state.timeScale, roadTop, roadBottom);
+    }
 
     // Sections (changement de thème par paliers)
     state.sectionTime += dt;
@@ -4240,6 +4433,8 @@
       ctx.rect(0, 0, canvas.width, roadTop);
       ctx.clip();
       drawCyberpunkBackground(roadTop);
+      drawStars(roadTop);
+      drawSearchlights(roadTop);
       ctx.restore();
     } else {
       ctx.fillStyle = currentTheme.outside;
@@ -4260,7 +4455,10 @@
 
     // Néons au sol et glissières lumineuses
     drawGuardRails(roadLeft, roadRight, roadTop, roadBottom);
+    drawNeonPillars(roadLeft, roadRight, roadTop, roadBottom);
     drawGroundNeonStrips(roadLeft, roadRight, roadTop, roadBottom);
+    drawFogBands(roadLeft, roadRight, roadTop, roadBottom);
+    drawWetReflections(roadLeft, roadRight, roadTop, roadBottom);
 
     // lignes médianes (pointillées qui défilent)
     const lanes = 3; // visuel seulement
