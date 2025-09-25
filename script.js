@@ -19,30 +19,48 @@
     ctx.globalCompositeOperation = 'screen';
     const vm = visMul();
 
-    // Mirror 2.0: reflet du ciel (au-dessus de la route) retourné verticalement
-    // Effet doux, flouté et atténué selon intensité de pluie.
+    // Mirror 2.1: reflet du ciel retourné avec ondulation par tranches (ripple)
     try {
       const reflectAlpha = 0.18 * wet * vm; // base 18% modulé par pluie+mode
       if (reflectAlpha > 0.01) {
+        const w = canvas.width;
+        const h = Math.max(1, Math.floor(roadTop));
+        if (reflectCanvas.width !== w || reflectCanvas.height !== h) {
+          reflectCanvas.width = w; reflectCanvas.height = h;
+        }
+        // Capture le ciel [0..roadTop], y-flip dans reflectCanvas
+        reflectCtx.save();
+        reflectCtx.setTransform(1, 0, 0, -1, 0, h);
+        reflectCtx.clearRect(0, 0, w, h);
+        reflectCtx.drawImage(canvas, 0, 0, w, h, 0, 0, w, h);
+        reflectCtx.restore();
+
+        const prevAlpha = ctx.globalAlpha;
         const prevFilter = ctx.filter;
-        ctx.filter = 'blur(2px)';
         ctx.globalAlpha = reflectAlpha;
-        // Transformer pour dessiner la zone [0..roadTop] comme reflet
-        ctx.save();
-        ctx.translate(0, roadTop * 2);
-        ctx.scale(1, -1);
-        // Dessine le haut de l'écran (ciel + skyline) reflété dans la route
-        ctx.drawImage(canvas, 0, 0, canvas.width, roadTop, 0, roadTop, canvas.width, roadTop);
-        ctx.restore();
+        ctx.filter = 'blur(1.8px)';
+        const sliceH = Math.max(1, Math.floor(2 * DPR));
+        const bandH = roadBottom - roadTop;
+        const t = performance.now() / 1000;
+        for (let sy = 0; sy < h; sy += sliceH) {
+          const depth = sy / h; // 0 top -> 1 bottom of reflection
+          const amp = (3.2 * DPR) * (1 - depth) * (0.6 + 0.6 * wet);
+          const speed = 8 + 24 * wet;
+          const freq = 0.03 + 0.04 * (1 - depth);
+          const offset = Math.sin((sy * freq) + t * speed) * amp;
+          const dy = Math.floor(roadTop + sy + offset);
+          // draw only inside road clip (already clipped)
+          ctx.drawImage(reflectCanvas, 0, sy, w, sliceH, 0, dy, w, sliceH);
+        }
         ctx.filter = prevFilter;
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = prevAlpha;
         // Dégradé d'atténuation vers le bas de la route
         const fade = ctx.createLinearGradient(0, roadTop, 0, roadBottom);
         fade.addColorStop(0, 'rgba(255,255,255,0.18)');
         fade.addColorStop(0.4, 'rgba(255,255,255,0.10)');
         fade.addColorStop(1, 'rgba(255,255,255,0.0)');
         ctx.fillStyle = fade;
-        ctx.fillRect(roadLeft, roadTop, roadRight - roadLeft, roadBottom - roadTop);
+        ctx.fillRect(roadLeft, roadTop, roadRight - roadLeft, bandH);
       }
     } catch {}
 
@@ -2800,6 +2818,9 @@
   // Bloom offscreen
   let bloomCanvas = document.createElement('canvas');
   let bloomCtx = bloomCanvas.getContext('2d');
+  // Reflection offscreen (for wet road ripple)
+  let reflectCanvas = document.createElement('canvas');
+  let reflectCtx = reflectCanvas.getContext('2d');
   function drawRain() {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
