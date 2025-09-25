@@ -1440,6 +1440,8 @@
   const ditherBtn = document.getElementById('ditherBtn');
   const visualModeBtn = document.getElementById('visualModeBtn');
   const autoPerfBtn = document.getElementById('autoPerfBtn');
+  const fpsTargetEl = document.getElementById('fpsTarget');
+  const fpsTargetValEl = document.getElementById('fpsTargetVal');
   const fpsHudBtn = document.getElementById('fpsHudBtn');
   const musicVolEl = document.getElementById('musicVol');
   const sfxVolEl = document.getElementById('sfxVol');
@@ -3198,6 +3200,7 @@
   let perfScale = 1.0; // 0.65..1.0
   let fpsAvg = 60; // EMA du FPS
   let fpsNowInstant = 60;
+  let fpsTarget = Number(localStorage.getItem('fps_target') || 58);
 
   const state = {
     running: false,
@@ -3324,6 +3327,21 @@
     autoPerfBtn.addEventListener('click', () => setAutoPerf(!state.autoPerf));
     autoPerfBtn.setAttribute('aria-pressed', String(state.autoPerf));
   }
+  // Init FPS target slider
+  if (fpsTargetEl) {
+    fpsTargetEl.value = String(fpsTarget);
+    if (fpsTargetValEl) fpsTargetValEl.textContent = String(fpsTarget);
+    fpsTargetEl.addEventListener('input', (e) => {
+      const v = Number(e.target.value);
+      if (!isNaN(v)) {
+        fpsTarget = clamp(v, 40, 75);
+        if (fpsTargetValEl) fpsTargetValEl.textContent = String(fpsTarget);
+      }
+    });
+    fpsTargetEl.addEventListener('change', () => {
+      try { localStorage.setItem('fps_target', String(fpsTarget)); } catch {}
+    });
+  }
   function setFpsHud(on) {
     state.fpsHud = !!on;
     try { localStorage.setItem('fps_hud', String(state.fpsHud)); } catch {}
@@ -3338,13 +3356,17 @@
     // EMA douce
     fpsAvg = fpsAvg * 0.9 + fpsNow * 0.1;
     // Adaptation par paliers
-    if (fpsAvg < 42) {
+    const low2 = Math.max(40, fpsTarget - 16);
+    const low1 = Math.max(42, fpsTarget - 8);
+    const high2 = Math.min(75, fpsTarget - 1);
+    const high1 = Math.min(75, fpsTarget - 4);
+    if (fpsAvg < low2) {
       perfScale = Math.max(0.65, perfScale - 0.06);
-    } else if (fpsAvg < 50) {
+    } else if (fpsAvg < low1) {
       perfScale = Math.max(0.70, perfScale - 0.03);
-    } else if (fpsAvg > 58) {
+    } else if (fpsAvg > high2) {
       perfScale = Math.min(1.0, perfScale + 0.02);
-    } else if (fpsAvg > 54) {
+    } else if (fpsAvg > high1) {
       perfScale = Math.min(1.0, perfScale + 0.01);
     }
   }

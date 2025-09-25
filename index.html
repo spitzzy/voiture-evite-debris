@@ -68,6 +68,10 @@
               <button type="button" id="reduceFxBtn" class="icon-btn" aria-pressed="false" title="Réduire les effets (mobile)">📱 Réduire effets</button>
               <button type="button" id="autoPerfBtn" class="icon-btn" aria-pressed="true" title="Auto réglage des effets selon FPS">⚡ Auto Perf</button>
               <button type="button" id="fpsHudBtn" class="icon-btn" aria-pressed="true" title="Afficher FPS et PerfScale">📈 FPS</button>
+              <label class="hud-label" for="fpsTarget" title="FPS cible pour Auto Perf">FPS cible
+                <input type="range" id="fpsTarget" min="40" max="75" step="1" value="58" />
+                <span id="fpsTargetVal">58</span>
+              </label>
             </div>
 
             <div class="settings-group">
