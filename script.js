@@ -18,10 +18,11 @@
     ctx.clip();
     ctx.globalCompositeOperation = 'screen';
     // broad vertical gradient tint
+    const vm = visMul();
     let g = ctx.createLinearGradient(0, roadTop, 0, roadBottom);
-    g.addColorStop(0, `rgba(98,209,255,${0.072 * wet})`);
-    g.addColorStop(0.5, `rgba(163,116,255,${0.054 * wet})`);
-    g.addColorStop(1, `rgba(255,122,200,${0.024 * wet})`);
+    g.addColorStop(0, `rgba(98,209,255,${(0.072 * wet * vm).toFixed(3)})`);
+    g.addColorStop(0.5, `rgba(163,116,255,${(0.054 * wet * vm).toFixed(3)})`);
+    g.addColorStop(1, `rgba(255,122,200,${(0.024 * wet * vm).toFixed(3)})`);
     ctx.fillStyle = g;
     ctx.fillRect(roadLeft, roadTop, roadRight - roadLeft, roadBottom - roadTop);
     // moving reflection streaks
@@ -30,7 +31,7 @@
       const y = roadTop + ((i / count) * (roadBottom - roadTop) + (world.lineOffset * 0.8)) % (roadBottom - roadTop);
       const gg = ctx.createLinearGradient(roadLeft, y - 6 * DPR, roadLeft, y + 6 * DPR);
       gg.addColorStop(0, 'rgba(255,255,255,0)');
-      gg.addColorStop(0.5, `rgba(200,220,255,${0.072 * wet})`);
+      gg.addColorStop(0.5, `rgba(200,220,255,${(0.072 * wet * vm).toFixed(3)})`);
       gg.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = gg;
       ctx.fillRect(roadLeft, y - 6 * DPR, roadRight - roadLeft, 12 * DPR);
@@ -104,8 +105,9 @@
     ctx.rect(0, 0, canvas.width, roadTop);
     ctx.clip();
     ctx.globalCompositeOperation = 'screen';
+    const vm = visMul();
     for (const s of stars) {
-      const t = Math.min(1, ((Math.sin(s.a) * 0.5 + 0.5) * 0.6 + 0.2) * 1.05);
+      const t = Math.min(1, ((Math.sin(s.a) * 0.5 + 0.5) * 0.6 + 0.2) * 1.05 * vm);
       ctx.fillStyle = `rgba(${s.hue},${t})`;
       ctx.beginPath();
       ctx.arc(s.x, s.y, Math.max(0.6 * DPR, s.size), 0, Math.PI * 2);
@@ -123,18 +125,19 @@
     const width = 4 * DPR; // pillar width
     const offset = (world.lineOffset * 1.8) % spacing;
     const startY = roadTop - offset;
+    const vm = visMul();
     for (let y = startY; y < roadBottom + spacing; y += spacing) {
       // left pillar
       let g1 = ctx.createLinearGradient(0, y - 18 * DPR, 0, y + 18 * DPR);
       g1.addColorStop(0, 'rgba(163,116,255,0)');
-      g1.addColorStop(0.5, 'rgba(163,116,255,0.55)');
+      g1.addColorStop(0.5, `rgba(163,116,255,${(0.55 * vm).toFixed(3)})`);
       g1.addColorStop(1, 'rgba(163,116,255,0)');
       ctx.fillStyle = g1;
       ctx.fillRect(roadLeft - 10 * DPR, y - 18 * DPR, width, 36 * DPR);
       // right pillar
       let g2 = ctx.createLinearGradient(0, y - 18 * DPR, 0, y + 18 * DPR);
       g2.addColorStop(0, 'rgba(98,209,255,0)');
-      g2.addColorStop(0.5, 'rgba(98,209,255,0.55)');
+      g2.addColorStop(0.5, `rgba(98,209,255,${(0.55 * vm).toFixed(3)})`);
       g2.addColorStop(1, 'rgba(98,209,255,0)');
       ctx.fillStyle = g2;
       ctx.fillRect(roadRight + 6 * DPR, y - 18 * DPR, width, 36 * DPR);
@@ -269,7 +272,7 @@
       const dy = -Math.cos(s.angle) * len * 0.9;
       const w = Math.max(28 * DPR, (46 * 1.15) * DPR * (1 + 0.2 * Math.sin(performance.now()/600)));
       const g = ctx.createLinearGradient(x, y, x + dx, y + dy);
-      g.addColorStop(0, `rgba(${s.hue},0.40)`);
+      g.addColorStop(0, `rgba(${s.hue},${(0.40 * visMul()).toFixed(3)})`);
       g.addColorStop(1, `rgba(${s.hue},0.0)`);
       ctx.fillStyle = g;
       ctx.beginPath();
@@ -410,7 +413,7 @@
     if (isNeonTheme()) {
       ctx.save();
       const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 240);
-      ctx.strokeStyle = `rgba(163,116,255,${0.60 * pulse})`;
+      ctx.strokeStyle = `rgba(163,116,255,${(0.60 * pulse * visMul()).toFixed(3)})`;
       ctx.lineWidth = Math.max(1, 1.8 * DPR);
       ctx.beginPath();
       ctx.moveTo(0, -h * 0.5);
@@ -449,7 +452,7 @@
         ctx.save();
         const pulse = 0.65 + 0.35 * Math.sin(performance.now() / 300);
         ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = `rgba(163,116,255,${0.50 * pulse})`;
+        ctx.strokeStyle = `rgba(163,116,255,${(0.50 * pulse * visMul()).toFixed(3)})`;
         ctx.lineWidth = Math.max(1, 1.6 * DPR);
         ctx.strokeRect(-w * 0.46, -h * 0.50, w * 0.92, h * 0.96);
         ctx.restore();
@@ -1361,6 +1364,7 @@
   const crtBtn = document.getElementById('crtBtn');
   const pixelSizeEl = document.getElementById('pixelSize');
   const ditherBtn = document.getElementById('ditherBtn');
+  const visualModeBtn = document.getElementById('visualModeBtn');
   const musicVolEl = document.getElementById('musicVol');
   const sfxVolEl = document.getElementById('sfxVol');
   // New HUD refs
@@ -1585,7 +1589,8 @@
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
       const baseAlpha = isNeonTheme() ? 0.42 : 0.24;
-      ctx.globalAlpha = baseAlpha * (state.ultraNeon ? 1.6 : 1);
+      const bloomMul = state.visualMode === 'cinematic' ? 1.10 : 0.70;
+      ctx.globalAlpha = baseAlpha * (state.ultraNeon ? 1.6 : 1) * bloomMul;
       ctx.drawImage(bloomCanvas, 0, 0, canvas.width, canvas.height);
       ctx.restore();
     } catch {}
@@ -2624,14 +2629,15 @@
     // Fine glowing rails alongside the shoulders
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
+    const vm = visMul();
     const glow = ctx.createLinearGradient(roadLeft - 10 * DPR, 0, roadLeft, 0);
     glow.addColorStop(0, 'rgba(116,196,255,0)');
-    glow.addColorStop(1, 'rgba(116,196,255,0.50)');
+    glow.addColorStop(1, `rgba(116,196,255,${(0.50 * vm).toFixed(3)})`);
     ctx.fillStyle = glow;
     ctx.fillRect(roadLeft - 10 * DPR, roadTop, 10 * DPR, roadBottom - roadTop);
 
     const glow2 = ctx.createLinearGradient(roadRight, 0, roadRight + 10 * DPR, 0);
-    glow2.addColorStop(0, 'rgba(116,196,255,0.50)');
+    glow2.addColorStop(0, `rgba(116,196,255,${(0.50 * vm).toFixed(3)})`);
     glow2.addColorStop(1, 'rgba(116,196,255,0)');
     ctx.fillStyle = glow2;
     ctx.fillRect(roadRight, roadTop, 10 * DPR, roadBottom - roadTop);
@@ -2646,10 +2652,11 @@
     const gap = 70 * DPR;
     const stripH = 6 * DPR;
     const offset = (world.lineOffset * 0.8) % gap;
+    const vm = visMul();
     for (let y = roadTop + offset; y < roadBottom; y += gap) {
       const g = ctx.createLinearGradient(roadLeft, y, roadRight, y);
       g.addColorStop(0, 'rgba(163,116,255,0.0)');
-      g.addColorStop(0.5, 'rgba(163,116,255,0.24)');
+      g.addColorStop(0.5, `rgba(163,116,255,${(0.24 * vm).toFixed(3)})`);
       g.addColorStop(1, 'rgba(163,116,255,0.0)');
       ctx.fillStyle = g;
       ctx.fillRect(roadLeft, y, roadRight - roadLeft, stripH);
@@ -3086,6 +3093,8 @@
     // Visual
     threeD: true,
     carDepth: 0.88, // 3D chase depth position (0=top, 1=bottom)
+    // Visual mode: 'cinematic' | 'competitive'
+    visualMode: (localStorage.getItem('visual_mode') || 'cinematic'),
     // Vehicle mode
     vehicle: 'ship', // 'car' | 'ship'
     blasterAmmo: 0,
@@ -3135,6 +3144,27 @@
     if (reduceFxBtn) reduceFxBtn.setAttribute('aria-pressed', String(state.reduceFx));
   }
   function fxScale() { return state.reduceFx ? 0.6 : 1; }
+  // Visual Mode intensity multiplier (for alphas/brightness)
+  function visMul() { return state.visualMode === 'cinematic' ? 1.0 : 0.7; }
+  function updateVisualModeUI() {
+    if (!visualModeBtn) return;
+    const isCine = state.visualMode === 'cinematic';
+    visualModeBtn.textContent = isCine ? '🎬 Cinématique' : '🏁 Compétitif';
+    visualModeBtn.setAttribute('aria-pressed', String(isCine));
+  }
+  function setVisualMode(mode) {
+    state.visualMode = (mode === 'competitive') ? 'competitive' : 'cinematic';
+    try { localStorage.setItem('visual_mode', state.visualMode); } catch {}
+    updateVisualModeUI();
+    showToast(`Mode visuel: ${state.visualMode === 'cinematic' ? 'Cinématique' : 'Compétitif'}`);
+  }
+  updateVisualModeUI();
+  if (visualModeBtn) {
+    visualModeBtn.addEventListener('click', () => {
+      const next = state.visualMode === 'cinematic' ? 'competitive' : 'cinematic';
+      setVisualMode(next);
+    });
+  }
   if (reduceFxBtn) {
     reduceFxBtn.addEventListener('click', () => setReduceFx(!state.reduceFx));
     reduceFxBtn.setAttribute('aria-pressed', String(state.reduceFx));
