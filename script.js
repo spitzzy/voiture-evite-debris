@@ -7,6 +7,60 @@
     const manifestLink = document.querySelector('link[rel="manifest"]');
     if (manifestLink) manifestLink.remove();
   }
+  function duckMusicFor(ms = 220, depth = 0.3) {
+    try {
+      if (!audioCtx || !musicGain) return;
+      const now = audioCtx.currentTime;
+      const low = Math.max(0, musicUserVol * (1 - depth));
+      musicGain.gain.cancelScheduledValues(now);
+      musicGain.gain.setTargetAtTime(low, now, 0.01);
+      musicGain.gain.setTargetAtTime(musicUserVol, now + ms / 1000, 0.06);
+    } catch {}
+  }
+  function playBlasterShot() {
+    if (!audioCtx || !sfxGain || state.muted) return;
+    const o = audioCtx.createOscillator();
+    const n = audioCtx.createBufferSource();
+    const g = audioCtx.createGain();
+    const bp = audioCtx.createBiquadFilter();
+    g.gain.value = 0.0008;
+    bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 3.0;
+    o.type = 'square'; o.frequency.value = 1200;
+    o.connect(g); g.connect(sfxGain);
+    // subtle noise crack
+    const dur = 0.12;
+    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    n.buffer = buf; n.connect(bp); bp.connect(sfxGain);
+    const now = audioCtx.currentTime;
+    o.start(); o.frequency.exponentialRampToValueAtTime(340, now + 0.1);
+    g.gain.exponentialRampToValueAtTime(0.00005, now + 0.12);
+    n.start(); n.stop(now + dur + 0.01);
+    o.stop(now + 0.12);
+    duckMusicFor(200, 0.2);
+  }
+  function playPickup(type) {
+    if (!audioCtx || !sfxGain || state.muted) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    g.gain.value = 0.0008; o.connect(g); g.connect(sfxGain);
+    o.type = 'sine';
+    const now = audioCtx.currentTime;
+    let f1 = 880, f2 = 1320;
+    if (type === 'coin') { f1 = 1100; f2 = 1760; }
+    if (type === 'shield') { f1 = 600; f2 = 900; }
+    if (type === 'slow') { f1 = 520; f2 = 780; }
+    if (type === 'magnet') { f1 = 740; f2 = 1240; }
+    if (type === 'ghost') { f1 = 400; f2 = 680; }
+    if (type === 'double') { f1 = 700; f2 = 1400; }
+    if (type === 'blaster') { f1 = 900; f2 = 1500; }
+    o.frequency.setValueAtTime(f1, now);
+    o.frequency.linearRampToValueAtTime(f2, now + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.00005, now + 0.14);
+    o.start(); o.stop(now + 0.16);
+    duckMusicFor(140, 0.12);
+  }
   function drawPerfHud() {
     if (!state.fpsHud) return;
     const txt = `FPS ${Math.round(fpsAvg)}  |  Perf ${(perfScale * 100).toFixed(0)}%`;
@@ -110,7 +164,7 @@
   function updateFogBands(dt, roadTop, roadBottom) {
     if (!isNeonTheme()) return;
     fogTimer += dt;
-    const want = 3;
+    const want = Math.max(1, Math.round(3 * fxScale()));
     if (fogBands.length < want && fogTimer > 1.2) {
       fogTimer = 0;
       const y = rand(roadTop - 60 * DPR, roadBottom + 40 * DPR);
@@ -257,6 +311,8 @@
   // PostFX: film grain overlay
   function applyFilmGrain() {
     if (!grainEnabled) return;
+    // Si auto perf réduit, on peut ignorer le grain pour sauver du CPU
+    if (state.autoPerf && perfScale < 0.85) return;
     try {
       const w = canvas.width, h = canvas.height;
       if (grainCanvas.width !== w || grainCanvas.height !== h) { grainCanvas.width = w; grainCanvas.height = h; }
@@ -271,7 +327,8 @@
       grainCtx.putImageData(img, 0, 0);
       ctx.save();
       ctx.globalCompositeOperation = 'overlay';
-      ctx.globalAlpha = isNeonTheme() ? 0.22 : 0.15;
+      const p = state.autoPerf ? perfScale : 1;
+      ctx.globalAlpha = (isNeonTheme() ? 0.22 : 0.15) * p;
       ctx.drawImage(grainCanvas, 0, 0);
       ctx.restore();
     } catch {}
@@ -311,7 +368,7 @@
   function initSearchlights() {
     searchlights.length = 0;
     if (!isNeonTheme()) return;
-    const count = 3;
+    const count = Math.max(1, Math.round(3 * fxScale()));
     for (let i = 0; i < count; i++) {
       const baseX = rand(40 * DPR, canvas.width - 40 * DPR);
       const speed = rand(0.15, 0.28);
@@ -334,7 +391,10 @@
     ctx.rect(0, 0, canvas.width, roadTop);
     ctx.clip();
     ctx.globalCompositeOperation = 'screen';
-    for (const s of searchlights) {
+    const p = state.autoPerf ? perfScale : 1;
+    const step = Math.max(1, Math.round(1 / Math.max(0.65, p)));
+    for (let i = 0; i < searchlights.length; i += step) {
+      const s = searchlights[i];
       const x = s.baseX;
       const y = roadTop + 6 * DPR; // just below sky band
       const len = Math.max(220 * DPR, roadTop * 0.9);
@@ -342,7 +402,7 @@
       const dy = -Math.cos(s.angle) * len * 0.9;
       const w = Math.max(28 * DPR, (46 * 1.15) * DPR * (1 + 0.2 * Math.sin(performance.now()/600)));
       const g = ctx.createLinearGradient(x, y, x + dx, y + dy);
-      g.addColorStop(0, `rgba(${s.hue},${(0.40 * visMul()).toFixed(3)})`);
+      g.addColorStop(0, `rgba(${s.hue},${(0.40 * visMul() * p).toFixed(3)})`);
       g.addColorStop(1, `rgba(${s.hue},0.0)`);
       ctx.fillStyle = g;
       ctx.beginPath();
@@ -428,7 +488,7 @@
     bullets.push({ x: bx, y: by, w, h, vy: 900, dmg: 1 });
     fireCooldown = 0.18;
     state.blasterAmmo = Math.max(0, (state.blasterAmmo || 0) - 1);
-    playClick();
+    playBlasterShot();
     // Effets tir
     spawnMuzzleFlash(bx + w / 2, by + h * 0.2);
     // petite secousse douce
@@ -3580,7 +3640,12 @@
   let npcSpawnInterval = 2.8; // base
 
   // Audio (WebAudio)
-  let audioCtx = null, masterGain = null, musicGain = null, sfxGain = null;
+  let audioCtx = null, masterGain = null, musicGain = null, sfxGain = null, envGain = null;
+  let musicUserVol = 0.5, sfxUserVol = 0.7;
+  // Ambiance nodes
+  let thruster = null; // {noise, bp, hp, gain}
+  let rainAmb = null; // {noise, lp, bp, gain}
+  let neonHum = null; // {osc, lfo, lfoGain, gain}
   let audioUnlocked = false; // becomes true after a user gesture
   function initAudio() {
     if (audioCtx) return;
@@ -3589,15 +3654,18 @@
       masterGain = audioCtx.createGain();
       musicGain = audioCtx.createGain();
       sfxGain = audioCtx.createGain();
+      envGain = audioCtx.createGain();
       const hp = audioCtx.createBiquadFilter();
       hp.type = 'highpass'; hp.frequency.value = 140;
       musicGain.connect(masterGain);
       sfxGain.connect(masterGain);
+      envGain.connect(sfxGain); // ambiances suivent le volume SFX
       masterGain.connect(hp);
       hp.connect(audioCtx.destination);
       masterGain.gain.value = state.muted ? 0 : 1;
-      musicGain.gain.value = 0.5;
-      sfxGain.gain.value = 0.7;
+      musicGain.gain.value = musicUserVol;
+      sfxGain.gain.value = sfxUserVol;
+      envGain.gain.value = 0.6; // base ambiances
     } catch (e) {
       console.warn('Web Audio API not supported', e);
     }
@@ -3624,6 +3692,7 @@
         if (!state.muted && state.running) {
           if (retroEnabled) { stopMusicPad(); startChiptune(); }
           else { stopChiptune(); startMusicPad(); }
+          ensureAmbients();
         }
       } catch {}
     };
@@ -3672,6 +3741,7 @@
     bp.frequency.exponentialRampToValueAtTime(250, now + dur * 0.9);
     g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
     noise.stop(now + dur + 0.01);
+    duckMusicFor(380, 0.35);
   }
 
   // SFX: klaxon (court) & whoosh de dépassement
@@ -3719,6 +3789,89 @@
   // SFX last-play timestamps (rate limiting)
   const sfxLast = { whoosh: 0, horn: 0 };
 
+  // ---- Ambiances: thruster, rain, neon hum ----
+  function startThrusterLoop() {
+    try {
+      if (!audioCtx || !envGain) return;
+      if (thruster) return;
+      const noise = audioCtx.createBufferSource();
+      const dur = 2.0;
+      const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1);
+      noise.buffer = buf; noise.loop = true;
+      const bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 600; bp.Q.value = 0.8;
+      const hp = audioCtx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 180;
+      const g = audioCtx.createGain(); g.gain.value = 0.0;
+      noise.connect(bp); bp.connect(hp); hp.connect(g); g.connect(envGain);
+      noise.start();
+      thruster = { noise, bp, hp, gain: g };
+    } catch {}
+  }
+  function stopThrusterLoop() { try { if (thruster) { thruster.noise.stop(); thruster = null; } } catch {}
+  function startRainAmb() {
+    try {
+      if (!audioCtx || !envGain) return; if (rainAmb) return;
+      const noise = audioCtx.createBufferSource();
+      const dur = 2.0; const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+      const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1);
+      noise.buffer = buf; noise.loop = true;
+      const lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1200;
+      const bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 800; bp.Q.value = 0.6;
+      const g = audioCtx.createGain(); g.gain.value = 0.0;
+      noise.connect(lp); lp.connect(bp); bp.connect(g); g.connect(envGain);
+      noise.start();
+      rainAmb = { noise, lp, bp, gain: g };
+    } catch {}
+  }
+  function stopRainAmb() { try { if (rainAmb) { rainAmb.noise.stop(); rainAmb = null; } } catch {}
+  function startNeonHum() {
+    try {
+      if (!audioCtx || !envGain) return; if (neonHum) return;
+      const osc = audioCtx.createOscillator(); osc.type = 'sine'; osc.frequency.value = 90;
+      const lfo = audioCtx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 1.2;
+      const lfoGain = audioCtx.createGain(); lfoGain.gain.value = 6; // +/- 6 Hz vibrato
+      const g = audioCtx.createGain(); g.gain.value = 0.0;
+      lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
+      osc.connect(g); g.connect(envGain);
+      osc.start(); lfo.start();
+      neonHum = { osc, lfo, lfoGain, gain: g };
+    } catch {}
+  }
+  function stopNeonHum() { try { if (neonHum) { neonHum.osc.stop(); neonHum.lfo.stop(); neonHum = null; } } catch {}
+
+  function ensureAmbients() {
+    if (!audioCtx || state.muted) return;
+    // Thruster when ship and running
+    if (state.running && state.vehicle === 'ship') startThrusterLoop(); else stopThrusterLoop();
+    // Rain ambience when raining
+    if (isNeonTheme() && rainEnabled) startRainAmb(); else stopRainAmb();
+    // Neon hum only in neon theme
+    if (isNeonTheme()) startNeonHum(); else stopNeonHum();
+  }
+  function updateAudio(dt) {
+    try {
+      if (!audioCtx) return;
+      // Update thruster based on road speed and timeScale
+      if (thruster) {
+        const sp = Math.max(0, lastRoadSpeed || world.baseSpeed);
+        const norm = clamp(sp / (world.baseSpeed * 2.4), 0, 1);
+        thruster.bp.frequency.setTargetAtTime(400 + norm * 900, audioCtx.currentTime, 0.05);
+        thruster.gain.gain.setTargetAtTime(0.05 + norm * 0.12, audioCtx.currentTime, 0.05);
+      }
+      // Rain volume per intensity
+      if (rainAmb) {
+        const vol = (rainEnabled ? (0.02 + rainIntensity * 0.22) : 0);
+        rainAmb.gain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.08);
+      }
+      // Neon hum subtle base that scales with neon visuals
+      if (neonHum) {
+        const base = 0.01 + (isNeonTheme() ? 0.05 * visMul() : 0);
+        neonHum.gain.gain.setTargetAtTime(base, audioCtx.currentTime, 0.15);
+      }
+    } catch {}
+  }
+
   const keys = new Set();
   const inputs = { left: false, right: false, up: false, down: false, shoot: false };
 
@@ -3753,6 +3906,11 @@
     tiltCanvas.height = canvas.height;
     // rebuild prerender with new DPR scaling for crisp details
     rebuildPlayerShipCanvas();
+    // Audio: start background and ambiences if possible
+    if (!state.muted && audioUnlocked) {
+      if (retroEnabled) { stopMusicPad(); startChiptune(); } else { stopChiptune(); startMusicPad(); }
+      ensureAmbients();
+    }
   }
 
   function roadBounds() {
@@ -3991,8 +4149,11 @@
     // route / animations décoratives
     const speed = world.baseSpeed * (0.9 + (state.difficulty - 1) * 0.25);
     world.lineOffset = (world.lineOffset + speed * dt * state.timeScale) % 60;
+    lastRoadSpeed = speed;
     updateCyberpunkBackground(dt * state.timeScale);
     updateRain(dt * state.timeScale);
+    ensureAmbients();
+    updateAudio(dt * state.timeScale);
     updateCameraDrops(dt * state.timeScale);
     // fog bands move with time and depend on road bounds
     {
@@ -4318,7 +4479,7 @@
       // collision pickup
       if (rectsOverlap(car, p)) {
         applyPowerup(p.type);
-        playClick();
+        playPickup(p.type);
         powerups.splice(i, 1);
         continue;
       }
@@ -5513,10 +5674,14 @@
     ditherBtn.setAttribute('aria-pressed', String(ditherEnabled));
   });
   if (musicVolEl) musicVolEl.addEventListener('input', (e) => {
-    if (musicGain) musicGain.gain.value = parseFloat(e.target.value);
+    const v = parseFloat(e.target.value);
+    musicUserVol = isNaN(v) ? musicUserVol : v;
+    if (musicGain) musicGain.gain.value = musicUserVol;
   });
   if (sfxVolEl) sfxVolEl.addEventListener('input', (e) => {
-    if (sfxGain) sfxGain.gain.value = parseFloat(e.target.value);
+    const v = parseFloat(e.target.value);
+    sfxUserVol = isNaN(v) ? sfxUserVol : v;
+    if (sfxGain) sfxGain.gain.value = sfxUserVol;
   });
 
   // PWA: Service worker registration
