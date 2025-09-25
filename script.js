@@ -7,6 +7,190 @@
     const manifestLink = document.querySelector('link[rel="manifest"]');
     if (manifestLink) manifestLink.remove();
   }
+
+  // ---- Holo-pubs (panneaux holographiques avec logos cycliques) ----
+  function getHoloLogosSet() {
+    // Pack thématique pour le thème Néon
+    const base = ['CYBER','BYTE','NET','CITY','AI','Ξ','Σ','忍','龍','電','東京','都市','ネオン'];
+    try {
+      const name = state.sectionName || currentTheme?.name || '';
+      if (/city|ville|urbain|Nuit/i.test(name)) {
+        return ['CITY','BLOCK','NEON','GRID','AI','Ξ','忍','都市'];
+      }
+      if (/rain|pluie|storm|orage/i.test(name)) {
+        return ['STORM','WET','FLOW','VOLT','電','雷','Ξ'];
+      }
+      if (/blackout|noir/i.test(name)) {
+        return ['NOIR','VOID','GHOST','NULL','Σ','Ξ'];
+      }
+    } catch {}
+    return base;
+  }
+  function makeHoloAd(roadLeft, roadRight, side) {
+    const sizes = [0.8, 1.0, 1.4];
+    const scale = randChoice(sizes);
+    const w = 64 * DPR * scale;
+    const h = 40 * DPR * scale;
+    const y = -h - 14 * DPR;
+    const margin = 10 * DPR;
+    const x = side === 'left' ? (roadLeft - margin - w) : (roadRight + margin);
+    const vy = Math.max(60, world.baseSpeed * 0.95);
+    const colors = ['#a374ff', '#4ad2ff', '#ff7bf3', '#ffd166', '#e6e7ff'];
+    const color = randChoice(colors);
+    // Logos cycliques (glyphes variés) selon section
+    const logos = getHoloLogosSet();
+    const phase = Math.random() * logos.length;
+    return { x, y, w, h, vy, side, color, logos, phase, high: false };
+  }
+  function makeHoloPylonAd(roadLeft, roadRight, side, roadTop) {
+    const scale = randChoice([1.2, 1.6, 2.0]);
+    const w = 64 * DPR * scale;
+    const h = 44 * DPR * scale;
+    const margin = 16 * DPR;
+    const x = side === 'left' ? (roadLeft - margin - w) : (roadRight + margin);
+    // position dans le ciel
+    const y = rand(8 * DPR, Math.max(10 * DPR, roadTop - h - 8 * DPR));
+    const vy = Math.max(40, world.baseSpeed * 0.55); // parallax plus fort (plus lent)
+    const colors = ['#a374ff', '#4ad2ff', '#ff7bf3', '#ffd166', '#e6e7ff'];
+    const color = randChoice(colors);
+    const logos = getHoloLogosSet();
+    const phase = Math.random() * logos.length;
+    return { x, y, w, h, vy, side, color, logos, phase, high: true };
+  }
+  function drawHoloAd(ad) {
+    if (!isNeonTheme()) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    // cadre
+    roundRect(ctx, ad.x, ad.y, ad.w, ad.h, 6 * DPR, 'rgba(14,14,24,0.6)');
+    ctx.strokeStyle = ad.color; ctx.lineWidth = Math.max(1, 2 * DPR);
+    ctx.strokeRect(ad.x + 1 * DPR, ad.y + 1 * DPR, ad.w - 2 * DPR, ad.h - 2 * DPR);
+    // scanlines
+    const t = performance.now() / 300;
+    ctx.globalAlpha = 0.12; ctx.fillStyle = 'rgba(180,220,255,0.8)';
+    for (let yy = ad.y + (t % 3) * DPR; yy < ad.y + ad.h; yy += 3 * DPR) ctx.fillRect(ad.x + 3 * DPR, yy, ad.w - 6 * DPR, 1 * DPR);
+    ctx.globalAlpha = 1;
+    // logo cyclique
+    const idx = Math.floor((performance.now() / 1000 + ad.phase) % ad.logos.length);
+    ctx.fillStyle = ad.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `${Math.floor(ad.h * 0.6)}px monospace`;
+    ctx.fillText(ad.logos[idx], ad.x + ad.w / 2, ad.y + ad.h / 2);
+    ctx.restore();
+  }
+  function drawHoloAdProjected(ad, x, y, s) {
+    if (!isNeonTheme()) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const w = (ad.w || 64 * DPR) * s; const h = (ad.h || 40 * DPR) * s;
+    const left = x - w / 2; const top = y - h / 2;
+    roundRect(ctx, left, top, w, h, 6 * DPR * s, 'rgba(14,14,24,0.6)');
+    ctx.strokeStyle = ad.color; ctx.lineWidth = Math.max(1, 2 * DPR * s);
+    ctx.strokeRect(left + 1 * DPR * s, top + 1 * DPR * s, w - 2 * DPR * s, h - 2 * DPR * s);
+    const t = performance.now() / 300;
+    ctx.globalAlpha = 0.12; ctx.fillStyle = 'rgba(180,220,255,0.8)';
+    for (let yy = top + (t % 3) * DPR; yy < top + h; yy += 3 * DPR) ctx.fillRect(left + 3 * DPR * s, yy, w - 6 * DPR * s, 1 * DPR);
+    ctx.globalAlpha = 1;
+    const idx = Math.floor((performance.now() / 1000 + (ad.phase || 0)) % (ad.logos?.length || 1));
+    const logo = ad.logos ? ad.logos[idx] : 'Ξ';
+    ctx.fillStyle = ad.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `${Math.floor(h * 0.6)}px monospace`;
+    ctx.fillText(logo, x, y);
+    ctx.restore();
+  }
+
+  // ---- Drones-lumière ----
+  function makeDrone(roadLeft, roadRight, side) {
+    const sz = rand(8, 14) * DPR;
+    const y = -sz - 6 * DPR;
+    const margin = 10 * DPR;
+    const x = side === 'left' ? (roadLeft - margin - sz * 0.5) : (roadRight + margin - sz * 0.5);
+    const vy = world.baseSpeed * rand(0.9, 1.1);
+    const hue = randChoice(['163,116,255','98,209,255','255,122,200']);
+    const phase = Math.random() * Math.PI * 2;
+    return { x, y, w: sz, h: sz * 0.4, vy, side, hue, phase };
+  }
+  function spawnDroneGroup(roadLeft, roadRight, side) {
+    const groupSize = (Math.random() < 0.5 ? 2 : 3);
+    const groupPhase = Math.random() * Math.PI * 2;
+    const base = [];
+    for (let i = 0; i < groupSize; i++) {
+      const d = makeDrone(roadLeft, roadRight, side);
+      d.phase = groupPhase + i * 0.6;
+      d.y -= i * 14 * DPR; // espacement léger
+      base.push(d);
+    }
+    return base;
+  }
+  function drawDrone(d) {
+    if (!isNeonTheme()) return;
+    const cx = d.x + d.w * 0.5, cy = d.y + d.h * 0.5;
+    const breath = 0.5 + 0.5 * Math.sin(performance.now() / 500 + d.phase);
+    ctx.save(); ctx.globalCompositeOperation = 'screen';
+    const rg = ctx.createRadialGradient(cx, cy, 1 * DPR, cx, cy, 10 * DPR);
+    rg.addColorStop(0, `rgba(${d.hue},${(0.25 + 0.35 * breath).toFixed(3)})`);
+    rg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(cx, cy, 10 * DPR, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = `rgba(${d.hue},${(0.5 + 0.4 * breath).toFixed(3)})`;
+    ctx.fillRect(d.x, d.y, d.w, d.h);
+    ctx.restore();
+  }
+  function drawDroneProjected(d, x, y, s) {
+    if (!isNeonTheme()) return;
+    const w = (d.w || 10 * DPR) * s; const h = (d.h || 4 * DPR) * s;
+    const cx = x; const cy = y;
+    const breath = 0.5 + 0.5 * Math.sin(performance.now() / 500 + d.phase);
+    ctx.save(); ctx.globalCompositeOperation = 'screen';
+    const rg = ctx.createRadialGradient(cx, cy, 1 * DPR, cx, cy, 10 * DPR * s);
+    rg.addColorStop(0, `rgba(${d.hue},${(0.25 + 0.35 * breath).toFixed(3)})`);
+    rg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(cx, cy, 10 * DPR * s, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = `rgba(${d.hue},${(0.5 + 0.4 * breath).toFixed(3)})`;
+    ctx.fillRect(x - w / 2, y - h / 2, w, h);
+    ctx.restore();
+  }
+
+  // ---- Arcs électriques (pluie forte) ----
+  function maybeSpawnNeonArc(roadTop, roadBottom) {
+    if (!isNeonTheme() || !rainEnabled || rainIntensity < 0.85) return;
+    // faible proba par seconde
+    if (Math.random() > 0.04) return;
+    // trouver deux totems visibles
+    const vis = palms.filter(p => p.y > roadTop && p.y < roadBottom);
+    if (vis.length < 2) return;
+    const a = vis[(Math.random() * vis.length) | 0];
+    let b = vis[(Math.random() * vis.length) | 0];
+    if (a === b && vis.length > 1) b = vis[(Math.random() * vis.length) | 0];
+    const life = rand(0.08, 0.18);
+    neonArcs.push({ ax: a.x + a.w * 0.5, ay: a.y + a.h * 0.05, bx: b.x + b.w * 0.5, by: b.y + b.h * 0.05, life, max: life });
+  }
+  function updateNeonArcs(dt) {
+    for (let i = neonArcs.length - 1; i >= 0; i--) {
+      const arc = neonArcs[i];
+      arc.life -= dt;
+      if (arc.life <= 0) neonArcs.splice(i, 1);
+    }
+  }
+  function drawNeonArcs() {
+    if (!neonArcs.length) return;
+    ctx.save(); ctx.globalCompositeOperation = 'screen';
+    for (const a of neonArcs) {
+      const t = 1 - Math.max(0, a.life / a.max);
+      const alpha = 0.55 * (1 - t);
+      ctx.strokeStyle = `rgba(163,116,255,${alpha.toFixed(3)})`;
+      ctx.lineWidth = Math.max(1, 1.5 * DPR);
+      ctx.beginPath();
+      // zigzag segments
+      const segs = 6;
+      for (let i = 0; i <= segs; i++) {
+        const u = i / segs;
+        const x = a.ax + (a.bx - a.ax) * u + Math.sin(u * Math.PI * 4 + performance.now() / 80) * 4 * DPR;
+        const y = a.ay + (a.by - a.ay) * u + Math.cos(u * Math.PI * 3 + performance.now() / 70) * 3 * DPR;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
   function duckMusicFor(ms = 220, depth = 0.3) {
     try {
       if (!audioCtx || !musicGain) return;
@@ -753,6 +937,13 @@
       ctx.fillRect(0, 0, canvas.width, roadTop);
       ctx.fillStyle = currentTheme.outside;
       ctx.fillRect(0, roadTop, canvas.width, canvas.height - roadTop);
+      // Sky layer: draw high holo-ads inside sky clip
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, canvas.width, roadTop); ctx.clip();
+      if (isNeonTheme() && holoAds.length) {
+        for (const ad of holoAds) { if (ad.high) drawHoloAd(ad); }
+      }
+      ctx.restore();
     } else {
       ctx.fillStyle = currentTheme.outside;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -815,13 +1006,33 @@
       const t = Math.min(1, Math.max(0, (sgn.y - roadTop) / denom));
       renderables.push({ type: 'sign', t, x: projectX(sgn.x + sgn.w / 2, t), y: yAt(t), s: 0.35 + 1.15 * Math.pow(t, 1.2), ref: sgn });
     }
+    // Holo-ads (Néon)
+    if (isNeonTheme() && holoAds.length) {
+      for (const ad of holoAds) {
+        if (ad.high) continue; // high sky ads drawn in sky layer
+        const t = Math.min(1, Math.max(0, (ad.y - roadTop) / denom));
+        renderables.push({ type: 'holo', t, x: projectX(ad.x + ad.w / 2, t), y: yAt(t), s: 0.35 + 1.15 * Math.pow(t, 1.2), ref: ad });
+      }
+    }
     for (const rk of rocks) {
       const t = Math.min(1, Math.max(0, (rk.y - roadTop) / denom));
       renderables.push({ type: 'rock', t, x: projectX(rk.x + rk.w / 2, t), y: yAt(t), s: 0.35 + 1.15 * Math.pow(t, 1.2), ref: rk });
     }
-    for (const fl of flowers) {
-      const t = Math.min(1, Math.max(0, (fl.y - roadTop) / denom));
-      renderables.push({ type: 'flower', t, x: projectX(fl.x + fl.w / 2, t), y: yAt(t), s: 0.35 + 1.15 * Math.pow(t, 1.2), ref: fl });
+    // Fleurs/buissons: décimation par perfScale (Auto Perf)
+    {
+      const stepF = Math.max(1, Math.round(1 / Math.max(0.65, perfScale)));
+      for (let i = 0; i < flowers.length; i += stepF) {
+        const fl = flowers[i];
+        const t = Math.min(1, Math.max(0, (fl.y - roadTop) / denom));
+        renderables.push({ type: 'flower', t, x: projectX(fl.x + fl.w / 2, t), y: yAt(t), s: 0.35 + 1.15 * Math.pow(t, 1.2), ref: fl });
+      }
+    }
+    // Drones-lumière
+    if (isNeonTheme() && drones.length) {
+      for (const d of drones) {
+        const t = Math.min(1, Math.max(0, (d.y - roadTop) / denom));
+        renderables.push({ type: 'drone', t, x: projectX(d.x + d.w / 2, t), y: yAt(t), s: 0.35 + 1.15 * Math.pow(t, 1.2), ref: d });
+      }
     }
     // Parterres de fleurs
     for (const bd of flowerBeds) {
@@ -889,8 +1100,10 @@
       // corps
       if (it.type === 'palm') drawPalmProjected(it.ref, x, y, s);
       else if (it.type === 'sign') drawSignProjected(it.ref, x, y, s);
+      else if (it.type === 'holo') drawHoloAdProjected(it.ref, x, y, s);
       else if (it.type === 'rock') drawRockProjected(it.ref, x, y, s);
       else if (it.type === 'flower') drawFlowerProjected(it.ref, x, y, s);
+      else if (it.type === 'drone') drawDroneProjected(it.ref, x, y, s);
       else if (it.type === 'bed') drawFlowerBedProjected(it.ref, x, y, s);
       else if (it.type === 'powerup') drawPowerupProjected(it.ref, x, y, s);
       else if (it.type === 'bullet') drawBulletProjected(it.ref, x, y, s);
@@ -911,6 +1124,8 @@
     // FX explosion overlays
     drawShards(ctx);
     drawExplosionOverlays();
+    // Arcs néon (pluie forte)
+    drawNeonArcs();
     // Camera lens raindrops overlay (screen-space)
     drawCameraDrops();
     // Perf HUD
@@ -2304,6 +2519,14 @@
       rg.addColorStop(1, 'rgba(180,200,255,0)');
       ctx.fillStyle = rg;
       ctx.beginPath(); ctx.arc(x, top, 36 * DPR * s, 0, Math.PI * 2); ctx.fill();
+      // Glyph animé
+      if (p.glyph) {
+        ctx.fillStyle = 'rgba(220,235,255,0.85)';
+        ctx.font = `${Math.max(8, Math.floor(12 * DPR * s))}px monospace`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const gy = top + 14 * DPR * s + Math.sin(performance.now()/600 + (p.phase||0)) * 2 * DPR * s;
+        ctx.fillText(p.glyph, x, gy);
+      }
       ctx.restore();
       return;
     }
@@ -3185,7 +3408,9 @@
     const vy = world.baseSpeed * (0.9 + Math.random() * 0.2);
     const swaySpeed = 1.6 + Math.random() * 0.8;
     const swayAmp = 8 * DPR;
-    return { x, y, w: baseW, h: baseH, trunkW, trunkH, side, vy, swaySpeed, swayAmp, phase: Math.random() * Math.PI * 2 };
+    const glyphs = ['忍','龍','電','ネ','光','Ξ','ル','街','囧','幻'];
+    const glyph = isNeonTheme() ? randChoice(glyphs) : undefined;
+    return { x, y, w: baseW, h: baseH, trunkW, trunkH, side, vy, swaySpeed, swayAmp, phase: Math.random() * Math.PI * 2, glyph };
   }
   function drawPalm(p) {
     if (isNeonTheme()) {
@@ -3210,6 +3435,14 @@
       rg.addColorStop(1, 'rgba(180,200,255,0)');
       ctx.fillStyle = rg;
       ctx.beginPath(); ctx.arc(p.x + w * 0.5, p.y, 36 * DPR, 0, Math.PI * 2); ctx.fill();
+      // Glyph animé
+      if (p.glyph) {
+        ctx.fillStyle = 'rgba(220,235,255,0.85)';
+        ctx.font = `${Math.max(8, Math.floor(12 * DPR))}px monospace`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const gy = p.y + 14 * DPR + Math.sin(performance.now()/600 + p.phase) * 2 * DPR;
+        ctx.fillText(p.glyph, p.x + w * 0.5, gy);
+      }
       ctx.restore();
       return;
     }
@@ -3805,6 +4038,18 @@
 
   const ships = [];
   let shipSpawnTimer = 0;
+  // Holo-pubs (Néon uniquement)
+  const holoAds = [];
+  let holoAdSpawnTimer = 0;
+  let holoAdSpawnInterval = 3.2;
+  let holoAdSideLeft = true;
+  // Drones-lumière au sol
+  const drones = [];
+  let droneSpawnTimer = 0;
+  let droneSpawnInterval = 1.1;
+  // Arcs électriques entre totems (rare, pluie forte)
+  const neonArcs = [];
+  let neonArcTimer = 0;
   let shipSpawnInterval = 3.8; // base
 
   // Décor: Rochers (bord de route)
@@ -4176,6 +4421,10 @@
     signSpawnTimer = 0;
     ships.length = 0;
     shipSpawnTimer = 0;
+    // Holo ads & drones
+    holoAds.length = 0; holoAdSpawnTimer = 0; holoAdSideLeft = true;
+    drones.length = 0; droneSpawnTimer = 0;
+    neonArcs.length = 0; neonArcTimer = 0;
     npcs.length = 0;
     npcSpawnTimer = 0;
     rocks.length = 0;
@@ -4206,6 +4455,21 @@
         const r = makeRock(sLeft, sRight, side);
         r.y = rand(sTop + 40 * DPR, sBottom - 140 * DPR);
         rocks.push(r);
+      }
+      // seed some neon elements
+      if (isNeonTheme()) {
+        for (let i = 0; i < 2; i++) {
+          const side = i % 2 === 0 ? 'left' : 'right';
+          const ad = makeHoloAd(sLeft, sRight, side);
+          ad.y = rand(sTop + 20 * DPR, sBottom - 200 * DPR);
+          holoAds.push(ad);
+        }
+        for (let i = 0; i < 3; i++) {
+          const side = Math.random() < 0.5 ? 'left' : 'right';
+          const d = makeDrone(sLeft, sRight, side);
+          d.y = rand(sTop + 40 * DPR, sBottom - 120 * DPR);
+          drones.push(d);
+        }
       }
     }
     draw();
@@ -4719,6 +4983,32 @@
       if (bd.y > canvas.height + 60 * DPR) flowerBeds.splice(i, 1);
     }
 
+    // maj holo-ads
+    if (holoAds.length) {
+      for (let i = holoAds.length - 1; i >= 0; i--) {
+        const ad = holoAds[i];
+        ad.y += ad.vy * dt * DPR * (ad.high ? 1.0 : state.timeScale);
+        if (!ad.high && ad.y > canvas.height + 60 * DPR) { holoAds.splice(i, 1); continue; }
+        if (ad.high && ad.y > roadTop + 6 * DPR) { holoAds.splice(i, 1); continue; }
+      }
+    }
+
+    // maj drones
+    if (drones.length) {
+      for (let i = drones.length - 1; i >= 0; i--) {
+        const d = drones[i];
+        d.y += d.vy * dt * DPR * state.timeScale;
+        if (d.y > canvas.height + 60 * DPR) drones.splice(i, 1);
+      }
+    }
+
+    // arcs néon: spawn/update
+    if (isNeonTheme()) {
+      neonArcTimer += dt;
+      if (neonArcTimer >= 0.12) { maybeSpawnNeonArc(roadTop, roadBottom); neonArcTimer = 0; }
+      updateNeonArcs(dt);
+    }
+
     // maj NPCs + comportements
     if (npcEnabled) {
       const lanes = 3;
@@ -4972,12 +5262,42 @@
       const s = 0.35 + 1.15 * Math.pow(t, 1.2);
       renderables.push({ type: 'sign', t, x, y, s, ref: sgn });
     }
+    if (isNeonTheme() && holoAds.length) {
+      for (const ad of holoAds) {
+        const t = Math.min(1, Math.max(0, (ad.y - roadTop) / denom));
+        const x = projectX(ad.x + ad.w / 2, t);
+        const y = yAt(t);
+        const s = 0.35 + 1.15 * Math.pow(t, 1.2);
+        renderables.push({ type: 'holo', t, x, y, s, ref: ad });
+      }
+    }
     for (const rk of rocks) {
       const t = Math.min(1, Math.max(0, (rk.y - roadTop) / denom));
       const x = projectX(rk.x + rk.w / 2, t);
       const y = yAt(t);
       const s = 0.35 + 1.15 * Math.pow(t, 1.2);
       renderables.push({ type: 'rock', t, x, y, s, ref: rk });
+    }
+    // Buissons/fleurs: décimation par perfScale
+    {
+      const stepF = Math.max(1, Math.round(1 / Math.max(0.65, perfScale)));
+      for (let i = 0; i < flowers.length; i += stepF) {
+        const fl = flowers[i];
+        const t = Math.min(1, Math.max(0, (fl.y - roadTop) / denom));
+        const x = projectX(fl.x + fl.w / 2, t);
+        const y = yAt(t);
+        const s = 0.35 + 1.15 * Math.pow(t, 1.2);
+        renderables.push({ type: 'flower', t, x, y, s, ref: fl });
+      }
+    }
+    if (isNeonTheme() && drones.length) {
+      for (const d of drones) {
+        const t = Math.min(1, Math.max(0, (d.y - roadTop) / denom));
+        const x = projectX(d.x + d.w / 2, t);
+        const y = yAt(t);
+        const s = 0.35 + 1.15 * Math.pow(t, 1.2);
+        renderables.push({ type: 'drone', t, x, y, s, ref: d });
+      }
     }
     for (const ob of obstacles) {
       const t = Math.min(1, Math.max(0, ((ob.y + ob.h * 0.5) - roadTop) / denom));
@@ -5016,8 +5336,14 @@
         drawPalmProjected(it.ref, x, y, s);
       } else if (it.type === 'sign') {
         drawSignProjected(it.ref, x, y, s);
+      } else if (it.type === 'holo') {
+        drawHoloAdProjected(it.ref, x, y, s);
       } else if (it.type === 'rock') {
         drawRockProjected(it.ref, x, y, s);
+      } else if (it.type === 'flower') {
+        drawFlowerProjected(it.ref, x, y, s);
+      } else if (it.type === 'drone') {
+        drawDroneProjected(it.ref, x, y, s);
       } else if (it.type === 'npc') {
         drawNPCProjected(it.ref, x, y, s);
       } else {
@@ -5063,6 +5389,10 @@
       drawCyberpunkBackground(roadTop);
       drawStars(roadTop);
       drawSearchlights(roadTop);
+      // Holo-ads hautes (pylônes) dans le ciel
+      if (holoAds.length) {
+        for (const ad of holoAds) { if (ad.high) drawHoloAd(ad); }
+      }
       ctx.restore();
     } else {
       ctx.fillStyle = currentTheme.outside;
@@ -5137,6 +5467,12 @@
       drawSign(s);
     }
 
+    // Holo-pubs et Drones (Néon)
+    if (isNeonTheme()) {
+      for (const ad of holoAds) drawHoloAd(ad);
+      for (const d of drones) drawDrone(d);
+    }
+
     // NPCs trafic (avant les obstacles)
     for (const n of npcs) {
       drawNPC(n);
@@ -5147,9 +5483,12 @@
       drawRock(rk);
     }
 
-    // fleurs décoratives
-    for (const fl of flowers) {
-      drawFlower(fl);
+    // fleurs décoratives (décimation Auto Perf)
+    {
+      const stepF = Math.max(1, Math.round(1 / Math.max(0.65, perfScale)));
+      for (let i = 0; i < flowers.length; i += stepF) {
+        drawFlower(flowers[i]);
+      }
     }
 
     // obstacles (stylisés cyberpunk)
@@ -5295,6 +5634,8 @@
       ctx.restore();
     }
 
+    // Arcs néon (pluie forte)
+    drawNeonArcs();
     // Pluie (au-dessus de tout)
     if (isNeonTheme() && rainEnabled && raindrops.length) {
       drawRain();
