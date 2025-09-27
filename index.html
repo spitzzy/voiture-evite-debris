@@ -5,7 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <title>Vaisseaux: évite les débris</title>
     <meta name="theme-color" content="#1a103d" />
-    <link rel="manifest" href="manifest.webmanifest" />
+    <script>
+      // Inject manifest only when served over http/https to avoid CORS warnings on file://
+      if (location.protocol !== 'file:') {
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = 'manifest.webmanifest';
+        document.head.appendChild(link);
+      }
+    </script>
     <link rel="icon" href="favicon.svg?v=1" type="image/svg+xml" />
     <link rel="stylesheet" href="style.css" />
   </head>
@@ -100,6 +108,8 @@
             <div class="settings-group">
               <h3>Scores</h3>
               <button type="button" id="scoresBtn" class="icon-btn" title="Meilleurs scores">🏆</button>
+              <button type="button" id="helpBtn" class="icon-btn" title="Aide / Contrôles">❓ Aide</button>
+              <button type="button" id="creditsBtn" class="icon-btn" title="Crédits">ℹ️ Crédits</button>
             </div>
 
             <div class="settings-group" id="dailyChallenges">
@@ -127,24 +137,12 @@
           <div class="skins">
             <h2>Choisis ton vaisseau</h2>
             <div id="skinGrid" class="skin-grid">
-              <button type="button" class="skin-option" data-skin="scout" aria-label="Vaisseau Scout" aria-pressed="false">
-                <img src="assets/ship_scout.svg" alt="Vaisseau Scout" loading="eager" />
-              </button>
-              <button type="button" class="skin-option" data-skin="interceptor" aria-label="Intercepteur" aria-pressed="false">
-                <img src="assets/ship_interceptor.svg" alt="Intercepteur" loading="eager" />
-              </button>
-              <button type="button" class="skin-option" data-skin="explorer" aria-label="Explorateur" aria-pressed="false">
-                <img src="assets/ship_explorer.svg" alt="Explorateur" loading="eager" />
-              </button>
-              <button type="button" class="skin-option" data-skin="courier" aria-label="Coursier" aria-pressed="false">
-                <img src="assets/ship_courier.svg" alt="Coursier" loading="eager" />
-              </button>
-              <button type="button" class="skin-option" data-skin="phantom" aria-label="Fantôme" aria-pressed="false">
-                <img src="assets/ship_phantom.svg" alt="Fantôme" loading="eager" />
-              </button>
-              <button type="button" class="skin-option" data-skin="freighter" aria-label="Cargo" aria-pressed="false">
-                <img src="assets/ship_freighter.svg" alt="Cargo" loading="eager" />
-              </button>
+              <button type="button" class="skin-option" data-skin="scout" aria-label="Vaisseau Scout" aria-pressed="false"><div class="skin-preview">🚀</div></button>
+              <button type="button" class="skin-option" data-skin="interceptor" aria-label="Intercepteur" aria-pressed="false"><div class="skin-preview">🚀</div></button>
+              <button type="button" class="skin-option" data-skin="explorer" aria-label="Explorateur" aria-pressed="false"><div class="skin-preview">🚀</div></button>
+              <button type="button" class="skin-option" data-skin="courier" aria-label="Coursier" aria-pressed="false"><div class="skin-preview">🚀</div></button>
+              <button type="button" class="skin-option" data-skin="phantom" aria-label="Fantôme" aria-pressed="false"><div class="skin-preview">🚀</div></button>
+              <button type="button" class="skin-option" data-skin="freighter" aria-label="Cargo" aria-pressed="false"><div class="skin-preview">🚀</div></button>
             </div>
           </div>
           <div class="difficulty">
@@ -185,12 +183,12 @@
           <div class="skins">
             <h2>Changer de vaisseau</h2>
             <div class="skin-grid">
-              <button type="button" class="skin-option" data-skin="scout" aria-pressed="false"><img src="assets/ship_scout.svg" alt="Vaisseau Scout" /></button>
-              <button type="button" class="skin-option" data-skin="interceptor" aria-pressed="false"><img src="assets/ship_interceptor.svg" alt="Intercepteur" /></button>
-              <button type="button" class="skin-option" data-skin="explorer" aria-pressed="false"><img src="assets/ship_explorer.svg" alt="Explorateur" /></button>
-              <button type="button" class="skin-option" data-skin="courier" aria-pressed="false"><img src="assets/ship_courier.svg" alt="Coursier" /></button>
-              <button type="button" class="skin-option" data-skin="phantom" aria-pressed="false"><img src="assets/ship_phantom.svg" alt="Fantôme" /></button>
-              <button type="button" class="skin-option" data-skin="freighter" aria-pressed="false"><img src="assets/ship_freighter.svg" alt="Cargo" /></button>
+              <button type="button" class="skin-option" data-skin="scout" aria-pressed="false"><div class="skin-preview">🚀</div></button>
+              <button type="button" class="skin-option" data-skin="interceptor" aria-pressed="false"><div class="skin-preview">🚀</div></button>
+              <button type="button" class="skin-option" data-skin="explorer" aria-pressed="false"><div class="skin-preview">🚀</div></button>
+              <button type="button" class="skin-option" data-skin="courier" aria-pressed="false"><div class="skin-preview">🚀</div></button>
+              <button type="button" class="skin-option" data-skin="phantom" aria-pressed="false"><div class="skin-preview">🚀</div></button>
+              <button type="button" class="skin-option" data-skin="freighter" aria-pressed="false"><div class="skin-preview">🚀</div></button>
             </div>
           </div>
           <button type="button" id="retryBtn" class="primary">Rejouer</button>
@@ -208,6 +206,25 @@
           </div>
           <ol id="scoresList" class="scores-list"></ol>
           <button type="button" id="closeScoresBtn" class="primary">Fermer</button>
+        </div>
+
+        <div class="panel hidden" id="helpPanel">
+          <h1>Aide / Contrôles</h1>
+          <ul class="help">
+            <li><b>Clavier</b>: ← → / A D et ↑ ↓ / W S</li>
+            <li><b>Tir</b>: Barre espace</li>
+            <li><b>Klaxon</b>: H (les NPC bougent)</li>
+            <li><b>Pause</b>: P</li>
+            <li><b>Mobile</b>: toucher gauche/droite ou glisser</li>
+          </ul>
+          <button type="button" id="closeHelpBtn" class="primary">Fermer</button>
+        </div>
+
+        <div class="panel hidden" id="creditsPanel">
+          <h1>Crédits</h1>
+          <p>Design & Code: Eliott + Cascade</p>
+          <p>Tech: Canvas 2D, PWA, Netlify</p>
+          <button type="button" id="closeCreditsBtn" class="primary">Fermer</button>
         </div>
       </div>
 
